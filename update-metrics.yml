@@ -1,0 +1,45 @@
+# .github/workflows/update-metrics.yml
+# Автообновление метрик борда: каждые 30 минут + ручной запуск.
+name: Update metrics
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Recalculate PMO metrics from Kaiten
+        env:
+          KAITEN_TOKEN: ${{ secrets.KAITEN_TOKEN }}
+        run: python3 auto/update_pmo_metrics.py
+
+      # Таблица-источник (все горизонтали через залитый Шаблон_источника_метрик).
+      - name: Pull metrics from source sheet
+        if: ${{ vars.SOURCE_ENABLED == 'true' }}
+        env:
+          SOURCE_SHEET_ID: ${{ secrets.SOURCE_SHEET_ID }}
+          SOURCE_GID: ${{ secrets.SOURCE_GID }}
+        run: python3 auto/update_source_sheet.py
+
+      # HOPE из Huntflow (Настройки → API → персональный токен).
+      - name: Pull HOPE metrics from Huntflow
+        if: ${{ vars.HUNTFLOW_ENABLED == 'true' }}
+        env:
+          HUNTFLOW_TOKEN: ${{ secrets.HUNTFLOW_TOKEN }}
+        run: python3 auto/update_hope_metrics.py
+
+      - name: Commit data
+        run: |
+          git config user.name "metrics-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/metrics.json
+          git diff --cached --quiet || git commit -m "metrics: $(date -u +%F)"
+          git push
