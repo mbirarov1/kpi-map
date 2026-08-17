@@ -55,6 +55,18 @@ jobs:
         run: |
           git config user.name "metrics-bot"
           git config user.email "actions@users.noreply.github.com"
+          # hope.json тоже коммитим — без него страница «Найм» пустая
           git add data/metrics.json
-          git diff --cached --quiet || git commit -m "metrics: $(date -u +%F\ %H:%M)"
-          git push
+          [ -f data/hope.json ] && git add data/hope.json
+          if git diff --cached --quiet; then
+            echo "изменений нет"; exit 0
+          fi
+          git commit -m "metrics: $(date -u +%F\ %H:%M)"
+          # робот и человек могут писать в репозиторий одновременно — пробуем несколько раз
+          for i in 1 2 3; do
+            if git pull --rebase --autostash origin main && git push; then
+              echo "запушено с попытки $i"; exit 0
+            fi
+            echo "попытка $i не прошла, ждём"; sleep 7
+          done
+          echo "не удалось запушить после 3 попыток"; exit 1
