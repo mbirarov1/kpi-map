@@ -12,7 +12,7 @@
   "pmo_cycletime": 94,
   "pmo_ontime": 0,
   "pmo_aging": 74,
-  "pmo_checklist": 69,
+  "pmo_checklist": 70,
   "pmo_due_filled": 5,
   "pmo_report_ok": 71,
   "hope_vacancies_open": 6,
@@ -216,7 +216,7 @@
    },
    {
     "d": "2026-08-17",
-    "v": 69
+    "v": 70
    }
   ],
   "pmo_due_filled": [
@@ -710,10 +710,10 @@
   ]
  },
  "meta": {
-  "pmo_source": "Kaiten API, board 1347171, снято 2026-08-17 11:46 UTC",
+  "pmo_source": "Kaiten API, board 1347171, снято 2026-08-17 12:18 UTC",
   "pmo_ontime_base": "0 из 4 завершённых, имевших дедлайн",
   "pmo_stuck": "14 из 19 активных сидят в стадии > 30 дн",
-  "hope_source": "Huntflow API, снято 2026-08-17 11:46 UTC",
+  "hope_source": "Huntflow API, снято 2026-08-17 12:18 UTC",
   "hope_funnel": "",
   "hope_tth_base": "медиана по 8 последним наймам",
   "hope_no_deadline_list": "Product Manager; Senior Fullstack разработчик (React / Node.js); Генеральный директор; СМО; Фуллстек А+ Холодный поиск; Эксперт по развитию стратегических клиентов и сложных сделок "
