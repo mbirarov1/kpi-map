@@ -1,5 +1,8 @@
 # .github/workflows/update-metrics.yml
-# Автообновление метрик борда: каждые 30 минут + ручной запуск.
+# PMO из Kaiten — каждые 30 минут (лёгкий, 2 запроса).
+# CPO и CTO из Kaiten — тоже каждые 30 минут (роадмап, пространство CTO, Platform, аналитика).
+# HOPE из Huntflow — только в 06:00 и 15:00 UTC (09:00 и 18:00 МСК): скрипт тяжёлый, ~50 запросов.
+# Ручной запуск (Run workflow) прогоняет ВСЁ, включая HOPE.
 name: Update metrics
 
 on:
@@ -21,7 +24,12 @@ jobs:
           KAITEN_TOKEN: ${{ secrets.KAITEN_TOKEN }}
         run: python3 auto/update_pmo_metrics.py
 
-      # Таблица-источник (все горизонтали через залитый Шаблон_источника_метрик).
+      - name: Recalculate CPO and CTO metrics from Kaiten
+        env:
+          KAITEN_TOKEN: ${{ secrets.KAITEN_TOKEN }}
+        run: python3 auto/update_cpo_cto_metrics.py
+
+      # Таблица-источник / витрина (если включена)
       - name: Pull metrics from source sheet
         if: ${{ vars.SOURCE_ENABLED == 'true' }}
         env:
@@ -29,18 +37,24 @@ jobs:
           SOURCE_GID: ${{ secrets.SOURCE_GID }}
         run: python3 auto/update_source_sheet.py
 
-      # HOPE из Huntflow (Настройки → API → персональный токен).
+      # HOPE: только утренний и вечерний прогон + любой ручной запуск
       - name: Pull HOPE metrics from Huntflow
         if: ${{ vars.HUNTFLOW_ENABLED == 'true' }}
         env:
           HUNTFLOW_TOKEN: ${{ secrets.HUNTFLOW_TOKEN }}
-        run: python3 auto/update_hope_metrics.py
+          EVENT: ${{ github.event_name }}
+        run: |
+          H=$(date -u +%H); M=$(date -u +%M)
+          if [ "$EVENT" = "workflow_dispatch" ] || { [ "$M" -lt 30 ] && { [ "$H" = "06" ] || [ "$H" = "15" ]; }; }; then
+            python3 auto/update_hope_metrics.py
+          else
+            echo "HOPE пропущен: сейчас $H:$M UTC. Huntflow опрашиваем в 06:00 и 15:00 UTC (09:00 и 18:00 МСК) или вручную."
+          fi
 
       - name: Commit data
         run: |
           git config user.name "metrics-bot"
           git config user.email "actions@users.noreply.github.com"
           git add data/metrics.json
-          git diff --cached --quiet || git commit -m "metrics: $(date -u +%F)"
+          git diff --cached --quiet || git commit -m "metrics: $(date -u +%F\ %H:%M)"
           git push
-
