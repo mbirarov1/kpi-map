@@ -710,10 +710,10 @@
   ]
  },
  "meta": {
-  "pmo_source": "Kaiten API, board 1347171, снято 2026-08-17 10:53 UTC",
+  "pmo_source": "Kaiten API, board 1347171, снято 2026-08-17 11:14 UTC",
   "pmo_ontime_base": "0 из 4 завершённых, имевших дедлайн",
   "pmo_stuck": "14 из 19 активных сидят в стадии > 30 дн",
-  "hope_source": "Huntflow API, снято 2026-08-17 10:53 UTC",
+  "hope_source": "Huntflow API, снято 2026-08-17 11:14 UTC",
   "hope_funnel": "",
   "hope_tth_base": "медиана по 8 последним наймам",
   "hope_no_deadline_list": "Product Manager; Senior Fullstack разработчик (React / Node.js); Генеральный директор; СМО; Фуллстек А+ Холодный поиск; Эксперт по развитию стратегических клиентов и сложных сделок "
