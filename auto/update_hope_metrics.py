@@ -1,23 +1,20 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Автообновление HOPE-метрик из Huntflow. Версия 2 — под реальную структуру аккаунта Кайтен
-(проверено 17.08.2026: 8069 кандидатов, 6 открытых вакансий, 94 закрытых, 22 статуса воронки).
+HOPE / найм — сбор данных из Huntflow. Версия 3.
 
-Считает:
-  hope_vacancies_open     — открытых вакансий сейчас
-  hope_vacancies_overdue  — открытых вакансий с просроченным дедлайном
-  hope_funnel_active      — кандидатов в активной воронке (все рабочие этапы, кроме отказа/резерва)
-  hope_time_to_hire       — медиана дней от появления кандидата на вакансии до статуса «Вышел на работу»
-  hope_offer_to_hire      — конверсия «Оффер принят» → «Вышел на работу», %
-  hope_nagruzka_rekrutera — открытых вакансий на одного рекрутёра
+Делает две вещи:
+  1) data/hope.json  — детальная выгрузка для страницы «Найм»:
+     вакансии, кандидаты (обезличенно: id + дата + этап + источник),
+     рекрутёры (по фактическим действиям в логах), справочники статусов и источников.
+  2) data/metrics.json — сводные метрики для борда:
+     hope_vacancies_open, hope_vacancies_no_deadline, hope_vacancies_overdue,
+     hope_time_to_hire, hope_time_to_offer, hope_nagruzka_rekrutera, hope_funnel_active
 
-Чего в Huntflow НЕТ и считать нельзя: cost per hire (расходы на источники не хранятся),
-зарплата лежит текстом («до 350к») — арифметике не поддаётся.
+Персональные данные НЕ выгружаются: ни имён, ни телефонов, ни почт — только id кандидата.
 
 Запуск:  HUNTFLOW_TOKEN=xxx python3 update_hope_metrics.py
-Тест:    HUNTFLOW_MOCK=mock.json python3 update_hope_metrics.py
-Скрипт печатает всё, что насчитал, ДО записи — первый боевой прогон сверять глазами.
+Скрипт печатает диагностику по каждому шагу — первый прогон сверять глазами.
 """
 
 import json
@@ -25,39 +22,38 @@ import os
 import sys
 import urllib.error
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 API = "https://api.huntflow.ru/v2"
 HERE = os.path.dirname(os.path.abspath(__file__))
-DATA_FILE = os.path.join(HERE, "..", "data", "metrics.json")
+DATA = os.path.join(HERE, "..", "data")
+METRICS_FILE = os.path.join(DATA, "metrics.json")
+HOPE_FILE = os.path.join(DATA, "hope.json")
 
-TTH_SAMPLE = 30          # сколько последних наймов берём для медианы time to hire
-# Этапы, которые НЕ считаются активной воронкой (по названию, регистр не важен)
-NOT_ACTIVE = ("отказ", "резерв", "увольнение", "вышел на работу", "ис закрыт")
+MAX_APPLICANTS_PER_VACANCY = 200   # потолок на вакансию
+MAX_LOGS = 60                      # по скольким кандидатам тянуть логи (для сроков)
+CLOSED_LOOKBACK_DAYS = 365         # закрытые вакансии за год — для истории
+
+# Этапы, которые считаем «входным пулом», а не активной воронкой
+POOL = ("отклик", "исходящий поиск", "просмотр заказчиком", "мессенджер", "из базы")
+# Этапы вне воронки вообще
+OUT = ("отказ", "резерв", "увольнение", "ис закрыт", "вышел на работу")
 
 
 def api(path, quiet=False):
-    """GET к Huntflow. Возвращает dict или None (с печатью причины)."""
-    mock = os.environ.get("HUNTFLOW_MOCK")
-    if mock:
-        with open(mock, encoding="utf-8") as f:
-            return json.load(f).get(path, {})
     token = os.environ.get("HUNTFLOW_TOKEN")
     if not token:
-        sys.exit("Нет HUNTFLOW_TOKEN (или HUNTFLOW_MOCK для теста)")
+        sys.exit("Нет HUNTFLOW_TOKEN")
     req = urllib.request.Request(
         API + path,
-        headers={"Authorization": "Bearer " + token,
-                 "Accept": "application/json",
-                 "User-Agent": "kpi-board/1.0"},
-    )
+        headers={"Authorization": "Bearer " + token, "Accept": "application/json",
+                 "User-Agent": "kpi-board/1.0"})
     try:
         with urllib.request.urlopen(req, timeout=60) as r:
             return json.loads(r.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
         if e.code == 401:
-            sys.exit("401: токен недействителен или истёк. Обновить HUNTFLOW_TOKEN "
-                     "(refresh лежит в HUNTFLOW_REFRESH_TOKEN, обменять на новый вручную).")
+            sys.exit("401: токен истёк или отозван — обновить HUNTFLOW_TOKEN")
         if not quiet:
             print(f"  ! {path} → HTTP {e.code}")
         return None
@@ -71,11 +67,11 @@ def d(iso):
     if not iso:
         return None
     s = str(iso).replace("T", " ")[:19]
-    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
+    for f in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
         try:
-            return datetime.strptime(s, fmt)
+            return datetime.strptime(s, f)
         except ValueError:
-            continue
+            pass
     return None
 
 
@@ -84,162 +80,201 @@ def median(a):
     return a[len(a) // 2] if a else None
 
 
+def paged(path_tpl, limit_pages=10):
+    """Тянет постранично, path_tpl должен содержать {page}."""
+    out, page = [], 1
+    while page <= limit_pages:
+        r = api(path_tpl.format(page=page))
+        if not r:
+            break
+        items = r.get("items", [])
+        out += items
+        if len(items) < 100:
+            break
+        page += 1
+    return out
+
+
 def main():
     now = datetime.now(timezone.utc)
     today = now.date()
 
-    # --- аккаунт ---
-    acc_resp = api("/accounts") or {}
-    accounts = acc_resp.get("items", [])
-    if not accounts:
-        sys.exit("Huntflow не вернул аккаунтов — проверить токен и права")
-    acc = accounts[0]["id"]
-    print(f"Аккаунт: {accounts[0].get('name')} (id {acc})")
+    acc_r = api("/accounts") or {}
+    if not acc_r.get("items"):
+        sys.exit("Huntflow не вернул аккаунтов")
+    acc = acc_r["items"][0]["id"]
+    print(f"Аккаунт: {acc_r['items'][0].get('name')} ({acc})")
 
-    # --- статусы воронки ---
+    # ---------- справочники ----------
     st = api(f"/accounts/{acc}/vacancies/statuses") or {}
     statuses = [s for s in st.get("items", []) if isinstance(s.get("id"), int)]
-    print(f"Статусов: {len(statuses)} → " + " · ".join(
-        f"{s['name']}[{s.get('type')}]" for s in statuses))
-    by_type = lambda t: [s for s in statuses if s.get("type") == t]
-    hired_ids = [s["id"] for s in by_type("hired")]
-    active_statuses = [s for s in statuses
-                       if s.get("type") == "user"
-                       and not any(w in s["name"].lower() for w in NOT_ACTIVE)]
+    st_name = {s["id"]: s["name"] for s in statuses}
+    st_type = {s["id"]: s.get("type") for s in statuses}
+    hired_ids = [s["id"] for s in statuses if s.get("type") == "hired"]
+    offer_ids = [s["id"] for s in statuses if "оффер" in s["name"].lower()]
+    print(f"Статусов: {len(statuses)}; найм={hired_ids}; офферные={offer_ids}")
 
-    # --- вакансии ---
-    def vacancies(state):
-        out, page = [], 1
-        while page <= 10:
-            r = api(f"/accounts/{acc}/vacancies?count=100&page={page}&state={state}")
-            if not r:
-                break
-            items = r.get("items", [])
-            out += items
-            if len(items) < 100:
-                break
-            page += 1
-        return out
+    src_r = api(f"/accounts/{acc}/applicants/sources") or {}
+    src_name = {s["id"]: s.get("name") for s in src_r.get("items", [])}
+    print(f"Источников в справочнике: {len(src_name)}")
 
-    open_vac = vacancies("OPEN")
-    closed_vac = vacancies("CLOSED")
-    print(f"Вакансии: открытых {len(open_vac)}, закрытых {len(closed_vac)}")
+    # ---------- вакансии ----------
+    open_v = paged(f"/accounts/{acc}/vacancies?count=100&page={{page}}&state=OPEN")
+    closed_v = paged(f"/accounts/{acc}/vacancies?count=100&page={{page}}&state=CLOSED")
+    cutoff = now.replace(tzinfo=None) - timedelta(days=CLOSED_LOOKBACK_DAYS)
+    closed_recent = [v for v in closed_v if (d(v.get("created")) or cutoff) >= cutoff]
+    print(f"Вакансии: открытых {len(open_v)}, закрытых всего {len(closed_v)}, "
+          f"закрытых за год {len(closed_recent)}")
 
+    no_deadline = [v for v in open_v if not v.get("deadline")]
     overdue = []
-    for v in open_vac:
+    for v in open_v:
         dl = d(v.get("deadline"))
         if dl and dl.date() < today:
-            overdue.append(v.get("position"))
+            overdue.append(v)
+    print(f"Без дедлайна: {len(no_deadline)} из {len(open_v)}; просрочено: {len(overdue)}")
 
-    # --- воронка: сколько кандидатов на каждом активном этапе ---
-    funnel, funnel_total = [], 0
-    for s in active_statuses:
-        r = api(f"/accounts/{acc}/applicants?count=1&status={s['id']}", quiet=True)
-        n = (r or {}).get("total_items")
-        if n is None:
+    # ---------- кандидаты по вакансиям ----------
+    vac_rows = []
+    agg = {}          # (вакансия, этап, источник, месяц) -> количество
+    appl_rows = []    # временный буфер, наружу НЕ пишется
+    seen_applicants = {}
+    for v in open_v + closed_recent:
+        vid = v["id"]
+        items = paged(f"/accounts/{acc}/applicants?count=100&page={{page}}&vacancy={vid}",
+                      limit_pages=max(1, MAX_APPLICANTS_PER_VACANCY // 100))
+        stage_counts = {}
+        for a in items:
+            link = None
+            for l in (a.get("links") or []):
+                if l.get("vacancy") == vid:
+                    link = l
+                    break
+            sid = (link or {}).get("status")
+            sname = st_name.get(sid, "—")
+            stage_counts[sname] = stage_counts.get(sname, 0) + 1
+            src = src_name.get(a.get("source")) or a.get("account_source") or "не указан"
+            month = str(a.get("created"))[:7]
+            key = (vid, sname, str(st_type.get(sid)), str(src), month)
+            agg[key] = agg.get(key, 0) + 1
+            appl_rows.append({"vac": vid, "stage": sname,
+                              "stage_type": st_type.get(sid), "src": src})
+            seen_applicants.setdefault(a["id"], sid)
+        vac_rows.append({
+            "id": vid,
+            "position": v.get("position"),
+            "division": ((v.get("custom_name_data") or {}).get("account_division") or [None])[0],
+            "state": v.get("state"),
+            "created": str(v.get("created"))[:10],
+            "deadline": str(v.get("deadline"))[:10] if v.get("deadline") else None,
+            "to_hire": v.get("applicants_to_hire"),
+            "applicants": len(items),
+            "stages": stage_counts,
+        })
+    print(f"Кандидатов собрано: {len(appl_rows)} по {len(vac_rows)} вакансиям")
+
+    # ---------- сроки и рекрутёры (по логам) ----------
+    targets = [aid for aid, sid in seen_applicants.items()
+               if sid in hired_ids or sid in offer_ids][:MAX_LOGS]
+    tth, tto, recruiters = [], [], {}
+    for aid in targets:
+        logs = api(f"/accounts/{acc}/applicants/{aid}/logs?count=100", quiet=True)
+        items = (logs or {}).get("items", [])
+        if not items:
             continue
-        funnel.append((s["name"], n))
-        funnel_total += n
-    if funnel:
-        print("Воронка: " + " · ".join(f"{n}—{c}" for n, c in funnel) + f" | всего {funnel_total}")
+        dates = [d(x.get("created")) for x in items if d(x.get("created"))]
+        if not dates:
+            continue
+        start = min(dates)
+        for x in items:
+            who = (x.get("account_info") or {}).get("name") or x.get("account")
+            if who:
+                recruiters[str(who)] = recruiters.get(str(who), 0) + 1
+        h = [d(x.get("created")) for x in items if x.get("status") in hired_ids and d(x.get("created"))]
+        o = [d(x.get("created")) for x in items if x.get("status") in offer_ids and d(x.get("created"))]
+        if h:
+            n = (max(h) - start).days
+            if 0 < n < 730:
+                tth.append(n)
+        if o:
+            n = (min(o) - start).days
+            if 0 < n < 730:
+                tto.append(n)
+    print(f"Time to hire: {len(tth)} набл., медиана {median(tth)}; "
+          f"Time to offer: {len(tto)} набл., медиана {median(tto)}")
+    print("Активность в логах по людям: " + ", ".join(
+        f"{k}:{v}" for k, v in sorted(recruiters.items(), key=lambda x: -x[1])[:8]))
 
-    # --- оффер принят → вышел на работу ---
-    def count_by_name(part):
-        for s in statuses:
-            if part in s["name"].lower():
-                r = api(f"/accounts/{acc}/applicants?count=1&status={s['id']}", quiet=True)
-                return (r or {}).get("total_items")
-        return None
+    # ---------- воронка ----------
+    funnel = {}
+    for a in appl_rows:
+        if a["stage_type"] in ("hired", "trash"):
+            continue
+        funnel[a["stage"]] = funnel.get(a["stage"], 0) + 1
+    active = sum(c for n, c in funnel.items()
+                 if not any(p in n.lower() for p in POOL)
+                 and not any(o in n.lower() for o in OUT))
+    pool = sum(c for n, c in funnel.items() if any(p in n.lower() for p in POOL))
+    print(f"Воронка: пул {pool}, активная стадия {active}")
 
-    offers = count_by_name("оффер принят")
-    hired_total = None
-    if hired_ids:
-        hired_total = 0
-        for hid in hired_ids:
-            r = api(f"/accounts/{acc}/applicants?count=1&status={hid}", quiet=True)
-            hired_total += (r or {}).get("total_items", 0)
-    offer_to_hire = None
-    if offers is not None and hired_total:
-        base = offers + hired_total
-        offer_to_hire = round(100.0 * hired_total / base, 1) if base else None
-    print(f"Офферов принято сейчас: {offers} · всего вышло на работу: {hired_total}")
+    # ---------- источники ----------
+    sources = {}
+    for a in appl_rows:
+        s = sources.setdefault(a["src"], {"total": 0, "hired": 0})
+        s["total"] += 1
+        if a["stage_type"] == "hired":
+            s["hired"] += 1
 
-    # --- time to hire по логам нанятых ---
-    tth = []
-    if hired_ids:
-        hired_list = []
-        for hid in hired_ids:
-            r = api(f"/accounts/{acc}/applicants?count={TTH_SAMPLE}&status={hid}", quiet=True)
-            hired_list += (r or {}).get("items", [])
-        for a in hired_list[:TTH_SAMPLE]:
-            logs = api(f"/accounts/{acc}/applicants/{a['id']}/logs?count=100", quiet=True)
-            items = (logs or {}).get("items", [])
-            if not items:
-                continue
-            dates = [d(x.get("created")) for x in items if d(x.get("created"))]
-            hired_dates = [d(x.get("created")) for x in items
-                           if x.get("status") in hired_ids and d(x.get("created"))]
-            if dates and hired_dates:
-                delta = (max(hired_dates) - min(dates)).days
-                if 0 < delta < 730:
-                    tth.append(delta)
-    tth_med = median(tth)
-    print(f"Time to hire: выборка {len(tth)} наймов, медиана {tth_med} дн")
+    # ---------- запись hope.json ----------
+    hope = {
+        "generated": now.strftime("%Y-%m-%d %H:%M UTC"),
+        "vacancies": vac_rows,
+        # агрегаты вместо списка людей: ни id, ни имён — репозиторий публичный
+        "agg": [{"vac": k[0], "stage": k[1], "type": k[2], "src": k[3], "m": k[4], "n": v}
+                for k, v in sorted(agg.items(), key=lambda x: -x[1])],
+        "funnel": funnel,
+        "recruiter_activity": recruiters,
+        "tth": tth, "tto": tto,
+    }
+    os.makedirs(DATA, exist_ok=True)
+    with open(HOPE_FILE, "w", encoding="utf-8") as f:
+        json.dump(hope, f, ensure_ascii=False, separators=(",", ":"))
+    print(f"OK: data/hope.json — {os.path.getsize(HOPE_FILE)//1024} КБ")
 
-    # --- нагрузка на рекрутёра ---
-    cw = api(f"/accounts/{acc}/coworkers?count=100") or {}
-    members = cw.get("items", [])
-    types = {}
-    for m in members:
-        t = str(m.get("member_type") or m.get("type") or "—")
-        types[t] = types.get(t, 0) + 1
-    print("Команда по ролям: " + ", ".join(f"{k}:{v}" for k, v in types.items()))
-    recruiters = sum(v for k, v in types.items()
-                     if k.lower() in ("owner", "manager", "recruiter"))
-    load = round(len(open_vac) / recruiters, 1) if recruiters else None
-
-    # --- сборка ---
+    # ---------- сводные метрики ----------
+    n_rec = len([k for k, v in recruiters.items() if v >= 5]) or None
     values = {
-        "hope_vacancies_open": len(open_vac),
+        "hope_vacancies_open": len(open_v),
+        "hope_vacancies_no_deadline": len(no_deadline),
         "hope_vacancies_overdue": len(overdue),
-        "hope_funnel_active": funnel_total if funnel else None,
-        "hope_time_to_hire": tth_med,
-        "hope_offer_to_hire": offer_to_hire,
-        "hope_nagruzka_rekrutera": load,
+        "hope_time_to_hire": median(tth),
+        "hope_time_to_offer": median(tto),
+        "hope_funnel_active": active or None,
+        "hope_nagruzka_rekrutera": round(len(open_v) / n_rec, 1) if n_rec else None,
     }
     values = {k: v for k, v in values.items() if v is not None}
-
     print("Насчитано:", json.dumps(values, ensure_ascii=False))
-    if not values:
-        sys.exit("Нечего записывать — смотреть строки выше, где сорвалось")
 
     data = {"updated": today.isoformat(), "values": {}, "history": {},
             "comps": {}, "meta": {}, "fields": {}}
-    if os.path.exists(DATA_FILE):
-        with open(DATA_FILE, encoding="utf-8") as f:
+    if os.path.exists(METRICS_FILE):
+        with open(METRICS_FILE, encoding="utf-8") as f:
             data = json.load(f)
-    data.setdefault("meta", {})
-
-    # чистим метрики прошлой версии
-    data.get("values", {}).pop("hope_voronka_naima", None)
-
+    for old in ("hope_voronka_naima", "hope_offer_to_hire", "hope_cost_per_hire"):
+        data.get("values", {}).pop(old, None)
     data["updated"] = today.isoformat()
     data["values"].update(values)
-    data["meta"]["hope_source"] = f"Huntflow API, снято {now.strftime('%Y-%m-%d %H:%M UTC')}"
-    if funnel:
-        data["meta"]["hope_funnel"] = " · ".join(f"{n}: {c}" for n, c in funnel)
-    if overdue:
-        data["meta"]["hope_overdue_list"] = "; ".join(str(x) for x in overdue[:10])
-    if tth:
-        data["meta"]["hope_tth_base"] = f"медиана по {len(tth)} последним наймам"
-
-    for key, val in values.items():
-        hist = [p for p in data["history"].get(key, []) if p["d"] != today.isoformat()]
+    data.setdefault("meta", {})["hope_source"] = f"Huntflow API, снято {now.strftime('%Y-%m-%d %H:%M UTC')}"
+    data["meta"]["hope_funnel"] = " · ".join(f"{n}: {c}" for n, c in
+                                             sorted(funnel.items(), key=lambda x: -x[1])[:12])
+    if no_deadline:
+        data["meta"]["hope_no_deadline_list"] = "; ".join(
+            str(v.get("position")) for v in no_deadline[:10])
+    for k, val in values.items():
+        hist = [p for p in data["history"].get(k, []) if p["d"] != today.isoformat()]
         hist.append({"d": today.isoformat(), "v": val})
-        data["history"][key] = sorted(hist, key=lambda p: p["d"])[-90:]
-
-    os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
-    with open(DATA_FILE, "w", encoding="utf-8") as f:
+        data["history"][k] = sorted(hist, key=lambda p: p["d"])[-90:]
+    with open(METRICS_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=1)
     print("OK: записано в data/metrics.json")
 
