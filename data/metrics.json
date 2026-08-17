@@ -26,10 +26,10 @@
   "cpo_roadmap_pipeline": 7,
   "cpo_roadmap_ideas": 8,
   "cto_wip_cto": 8,
-  "cto_done30_cto": 22,
+  "cto_done30_cto": 17,
   "cto_stale14_cto": 4,
   "cto_blocked_cto": 3,
-  "cto_due_filled_cto": 11,
+  "cto_due_filled_cto": 12,
   "cto_platform_wip": 9,
   "cto_analytics_wip": 2
  },
@@ -339,7 +339,7 @@
   "cto_done30_cto": [
    {
     "d": "2026-08-17",
-    "v": 22
+    "v": 17
    }
   ],
   "cto_stale14_cto": [
@@ -357,7 +357,7 @@
   "cto_due_filled_cto": [
    {
     "d": "2026-08-17",
-    "v": 11
+    "v": 12
    }
   ],
   "cto_platform_wip": [
@@ -787,7 +787,7 @@
   ]
  },
  "meta": {
-  "pmo_source": "Kaiten API, board 1347171, снято 2026-08-17 13:12 UTC",
+  "pmo_source": "Kaiten API, board 1347171, снято 2026-08-17 13:58 UTC",
   "pmo_ontime_base": "0 из 4 завершённых, имевших дедлайн",
   "pmo_stuck": "14 из 19 активных сидят в стадии > 30 дн",
   "hope_source": "Huntflow API, снято 2026-08-17 13:05 UTC",
@@ -795,8 +795,8 @@
   "hope_tth_base": "медиана по 8 последним наймам",
   "hope_no_deadline_list": "Product Manager; Senior Fullstack разработчик (React / Node.js); Генеральный директор; СМО; Фуллстек А+ Холодный поиск; Эксперт по развитию стратегических клиентов и сложных сделок ",
   "cpo_roadmap_base": "Q3 2026: 0 из 17 пунктов доехали до проверки или оценки цели",
-  "cpo_roadmap_src": "Kaiten, доска Roadmap public (1682987), снято 2026-08-17 13:12 UTC",
-  "cto_src": "Kaiten, пространство CTO (доски 1729754, 1729752), всего 54 карточек, снято 2026-08-17 13:12 UTC",
+  "cpo_roadmap_src": "Kaiten, доска Roadmap public (1682987), снято 2026-08-17 13:58 UTC",
+  "cto_src": "Kaiten, пространство CTO (доски 1729754, 1729752), всего 49 карточек, снято 2026-08-17 13:58 UTC",
   "cto_platform_base": "18 инициатив всего, дедлайн проставлен у 2",
   "cto_analytics_base": "19 карточек на доске «Аналитика»"
  },
