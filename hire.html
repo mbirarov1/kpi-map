@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Найм — дашборд HOPE</title>
+<style>
+  :root{color-scheme:light;
+    --surface:#fcfcfb;--card:#fff;--ink1:#0b0b0b;--ink2:#52514e;--ink3:#8a8984;--ring:#e4e3df;
+    --acc:#4a3aa7;--ok:#008300;--warn:#eda100;--bad:#e34948;--bar:#2a78d6;}
+  @media (prefers-color-scheme:dark){:root{color-scheme:dark;
+    --surface:#1a1a19;--card:#232322;--ink1:#fff;--ink2:#c3c2b7;--ink3:#8a8984;--ring:#3a3a38;
+    --acc:#9085e9;--ok:#00a300;--warn:#c98500;--bad:#e66767;--bar:#3987e5;}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--surface);color:var(--ink1);
+    font:14px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif;padding:20px;max-width:1400px;margin:0 auto}
+  h1{font-size:20px;margin:0 0 2px}
+  .sub{font-size:12px;color:var(--ink3);margin-bottom:16px}
+  .bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+  .bar button,.bar input{padding:6px 12px;font:inherit;font-size:12.5px;background:var(--card);
+    border:1px solid var(--ring);border-radius:999px;color:var(--ink1);cursor:pointer}
+  .bar button.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:18px}
+  .c{background:var(--card);border:1px solid var(--ring);border-radius:12px;padding:12px 14px}
+  .c .v{font-size:24px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
+  .c .n{font-size:11.5px;color:var(--ink3);margin-top:4px}
+  h2{font-size:15px;margin:22px 0 8px}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;background:var(--card);
+    border:1px solid var(--ring);border-radius:12px;overflow:hidden}
+  th{text-align:left;padding:8px 10px;color:var(--ink2);font-weight:600;border-bottom:1px solid var(--ring);font-size:11.5px}
+  td{padding:7px 10px;border-bottom:1px solid var(--ring);vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  .num{text-align:right;font-variant-numeric:tabular-nums}
+  .tag{display:inline-block;padding:1px 7px;border-radius:999px;font-size:11px;font-weight:600}
+  .t-ok{background:rgba(0,131,0,.12);color:var(--ok)}
+  .t-warn{background:rgba(237,161,0,.15);color:var(--warn)}
+  .t-bad{background:rgba(227,73,72,.13);color:var(--bad)}
+  .fbar{height:14px;background:var(--bar);border-radius:0 4px 4px 0;min-width:2px}
+  .muted{color:var(--ink3)}
+  .empty{padding:16px;color:var(--ink3);font-size:13px}
+  .note{font-size:12px;color:var(--ink2);background:var(--card);border:1px solid var(--ring);
+    border-radius:10px;padding:12px 14px;margin-top:18px;line-height:1.6}
+</style>
+</head>
+<body>
+<h1>Найм — дашборд</h1>
+<div class="sub" id="sub">загрузка данных…</div>
+
+<div class="bar" id="bar">
+  <span style="font-size:12px;color:var(--ink3)">Период добавления кандидатов:</span>
+  <button data-days="30">30 дней</button>
+  <button data-days="90" class="on">90 дней</button>
+  <button data-days="180">полгода</button>
+  <button data-days="9999">всё время</button>
+</div>
+
+<div class="cards" id="cards"></div>
+
+<h2>Вакансии</h2>
+<div id="vac"></div>
+
+<h2>Воронка</h2>
+<div id="funnel"></div>
+
+<h2>Источники кандидатов</h2>
+<div id="src"></div>
+
+<h2>Активность рекрутёров</h2>
+<div id="rec"></div>
+
+<div class="note" id="note"></div>
+
+<script>
+var D=null, DAYS=90;
+var $=function(id){return document.getElementById(id)};
+function esc(s){var e=document.createElement('span');e.textContent=(s==null?'—':s);return e.innerHTML}
+function med(a){a=a.slice().sort(function(x,y){return x-y});return a.length?a[Math.floor(a.length/2)]:null}
+function daysAgo(n){var d=new Date();d.setDate(d.getDate()-n);return d.toISOString().slice(0,10)}
+
+fetch('data/hope.json',{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json()})
+ .then(function(j){D=j;render()})
+ .catch(function(){$('sub').textContent='Файл data/hope.json не найден. Он появится после первого прогона Update metrics с включённым HUNTFLOW_ENABLED.';});
+
+$('bar').addEventListener('click',function(e){
+  var b=e.target.closest('button'); if(!b)return;
+  DAYS=+b.dataset.days;
+  [].forEach.call($('bar').querySelectorAll('button'),function(x){x.classList.toggle('on',x===b)});
+  render();
+});
+
+function render(){
+  if(!D)return;
+  var fromM=DAYS>=9999?'0000-00':daysAgo(DAYS).slice(0,7);
+  var AGG=(D.agg||[]).filter(function(a){return (a.m||'')>=fromM});
+  var total=(D.agg||[]).reduce(function(s,a){return s+a.n},0);
+  var shown=AGG.reduce(function(s,a){return s+a.n},0);
+  $('sub').textContent='Данные Huntflow, снято '+D.generated+' · кандидаты, добавленные за выбранный период ('+shown+' из '+total+')';
+
+  // ---- карточки ----
+  var openV=D.vacancies.filter(function(v){return v.state==='OPEN'});
+  var noDl=openV.filter(function(v){return !v.deadline});
+  var today=new Date().toISOString().slice(0,10);
+  var over=openV.filter(function(v){return v.deadline && v.deadline<today});
+  var hired=AGG.filter(function(a){return a.type==='hired'}).reduce(function(s,a){return s+a.n},0);
+  var cards=[
+    [openV.length,'Открытых вакансий'],
+    [shown,'Кандидатов добавлено'],
+    [hired,'Вышли на работу'],
+    [med(D.tth)!=null?med(D.tth)+' дн':'—','Time to hire (медиана)'],
+    [med(D.tto)!=null?med(D.tto)+' дн':'—','Time to offer (медиана)'],
+    [noDl.length,'Вакансий без дедлайна'],
+    [over.length,'Просрочен дедлайн']
+  ];
+  $('cards').innerHTML=cards.map(function(c){
+    return '<div class="c"><div class="v">'+esc(c[0])+'</div><div class="n">'+esc(c[1])+'</div></div>'}).join('');
+
+  // ---- вакансии ----
+  var rows=D.vacancies.filter(function(v){return v.state==='OPEN'}).map(function(v){
+    var mine=AGG.filter(function(a){return a.vac===v.id});
+    var pool=0,act=0,off=0,hir=0,cnt=0;
+    mine.forEach(function(a){
+      var s=(a.stage||'').toLowerCase(); cnt+=a.n;
+      if(a.type==='hired'){hir+=a.n;return}
+      if(a.type==='trash')return;
+      if(/оффер/.test(s))off+=a.n;
+      else if(/отклик|исходящ|просмотр заказчиком|мессенджер|из базы/.test(s))pool+=a.n;
+      else act+=a.n;
+    });
+    var status = !v.deadline ? '<span class="tag t-warn">дедлайна нет</span>'
+      : (v.deadline<today ? '<span class="tag t-bad">просрочено</span>'
+                          : '<span class="tag t-ok">в сроке</span>');
+    var age = v.created ? Math.round((Date.now()-new Date(v.created))/864e5) : '—';
+    return '<tr><td>'+esc(v.position)+'<div class="muted" style="font-size:11px">'+esc(v.division||'')+'</div></td>'+
+      '<td class="num">'+esc(age)+'</td><td>'+esc(v.deadline||'—')+'</td><td>'+status+'</td>'+
+      '<td class="num">'+cnt+'</td><td class="num">'+pool+'</td><td class="num">'+act+'</td>'+
+      '<td class="num">'+off+'</td><td class="num">'+hir+'</td></tr>';
+  }).join('');
+  $('vac').innerHTML = rows ? '<table><tr><th>Вакансия</th><th class="num">Дней открыта</th><th>Дедлайн</th><th>Срок</th>'+
+    '<th class="num">Кандидатов</th><th class="num">Пул</th><th class="num">В работе</th><th class="num">Оффер</th><th class="num">Нанято</th></tr>'+rows+'</table>'
+    : '<div class="empty">Открытых вакансий нет</div>';
+
+  // ---- воронка ----
+  var f=Object.keys(D.funnel||{}).map(function(k){return [k,D.funnel[k]]}).sort(function(a,b){return b[1]-a[1]});
+  var mx=f.length?f[0][1]:1;
+  $('funnel').innerHTML = f.length ? '<table>'+f.map(function(x){
+    return '<tr><td style="width:230px">'+esc(x[0])+'</td><td><div class="fbar" style="width:'+
+      Math.max(2,x[1]/mx*100)+'%"></div></td><td class="num" style="width:60px">'+x[1]+'</td></tr>'}).join('')+'</table>'
+    : '<div class="empty">Нет данных</div>';
+
+  // ---- источники ----
+  var S={};
+  AGG.forEach(function(a){var s=S[a.src]||(S[a.src]={t:0,h:0});s.t+=a.n;if(a.type==='hired')s.h+=a.n});
+  var sk=Object.keys(S).sort(function(a,b){return S[b].t-S[a].t});
+  $('src').innerHTML = sk.length ? '<table><tr><th>Источник</th><th class="num">Кандидатов</th><th class="num">Наймов</th><th class="num">Конверсия</th></tr>'+
+    sk.map(function(k){var s=S[k];return '<tr><td>'+esc(k)+'</td><td class="num">'+s.t+'</td><td class="num">'+s.h+'</td>'+
+      '<td class="num">'+(s.t?(100*s.h/s.t).toFixed(1).replace('.',',')+' %':'—')+'</td></tr>'}).join('')+'</table>'
+    : '<div class="empty">Нет данных</div>';
+
+  // ---- рекрутёры ----
+  var R=D.recruiter_activity||{};
+  var rk=Object.keys(R).sort(function(a,b){return R[b]-R[a]});
+  var main=rk.filter(function(k){return R[k]>=5});
+  $('rec').innerHTML = rk.length ? '<table><tr><th>Кто</th><th class="num">Действий в логах</th><th class="num">Вакансий на человека</th></tr>'+
+    rk.map(function(k){return '<tr><td>'+esc(k)+'</td><td class="num">'+R[k]+'</td><td class="num">'+
+      (R[k]>=5 && main.length ? (openV.length/main.length).toFixed(1).replace('.',',') : '—')+'</td></tr>'}).join('')+'</table>'
+    : '<div class="empty">Нет данных</div>';
+
+  $('note').innerHTML='<b>Как читать.</b> «Пул» — отклики и исходящий поиск, люди ещё не в процессе. «В работе» — от телефонного интервью до финального собеседования. Time to hire считается от появления кандидата на вакансии до статуса «Вышел на работу», time to offer — до статуса «Выставлен оффер»; обе медианы по всей истории, не по выбранному периоду.<br><b>Дедлайн вакансии</b> проставляется в самой карточке вакансии в Huntflow. Пока он пустой, «просрочено» показывает ноль не потому, что всё хорошо, а потому что сравнивать не с чем — такие вакансии помечены жёлтым.<br><b>Рекрутёры</b> определяются по фактическим действиям в истории кандидатов, а не по ролям в аккаунте: роль watcher есть у 27 человек, но реально найм ведут единицы.';
+}
+</script>
+</body>
+</html>
