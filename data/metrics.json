@@ -14,7 +14,8 @@
   "pmo_aging": 74,
   "pmo_checklist": 69,
   "pmo_due_filled": 5,
-  "pmo_report_ok": 71
+  "pmo_report_ok": 71,
+  "hope_voronka_naima": 0.1
  },
  "history": {
   "pmo_active": [
@@ -239,6 +240,12 @@
    {
     "d": "2026-08-17",
     "v": 71
+   }
+  ],
+  "hope_voronka_naima": [
+   {
+    "d": "2026-08-17",
+    "v": 0.1
    }
   ]
  },
@@ -649,9 +656,10 @@
   ]
  },
  "meta": {
-  "pmo_source": "Kaiten API, board 1347171, снято 2026-08-17 06:35 UTC",
+  "pmo_source": "Kaiten API, board 1347171, снято 2026-08-17 06:55 UTC",
   "pmo_ontime_base": "0 из 4 завершённых, имевших дедлайн",
-  "pmo_stuck": "14 из 19 активных сидят в стадии > 30 дн"
+  "pmo_stuck": "14 из 19 активных сидят в стадии > 30 дн",
+  "hope_source": "Huntflow API, снято 2026-08-17 06:55 UTC"
  },
  "fields": {}
 }
