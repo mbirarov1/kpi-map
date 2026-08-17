@@ -8,7 +8,7 @@
   "pmo_blocked": 0,
   "pmo_overdue": 0,
   "pmo_strukturnaya_celostnost": 58,
-  "pmo_queue": 5,
+  "pmo_queue": 6,
   "pmo_cycletime": 94,
   "pmo_ontime": 0,
   "pmo_aging": 74,
@@ -160,7 +160,7 @@
    },
    {
     "d": "2026-08-17",
-    "v": 5
+    "v": 6
    }
   ],
   "pmo_cycletime": [
@@ -641,6 +641,13 @@
     "o": "Сергей",
     "col": "Подготовка к квалификации",
     "d": 81
+   },
+   {
+    "id": 68810551,
+    "t": "Готовность Kaiten к исполнению нового SLA для On-Premises",
+    "o": "Олег",
+    "col": "Подготовка к квалификации",
+    "d": 0
    }
   ],
   "nopassport": [
@@ -703,10 +710,10 @@
   ]
  },
  "meta": {
-  "pmo_source": "Kaiten API, board 1347171, снято 2026-08-17 10:02 UTC",
+  "pmo_source": "Kaiten API, board 1347171, снято 2026-08-17 10:53 UTC",
   "pmo_ontime_base": "0 из 4 завершённых, имевших дедлайн",
   "pmo_stuck": "14 из 19 активных сидят в стадии > 30 дн",
-  "hope_source": "Huntflow API, снято 2026-08-17 10:02 UTC",
+  "hope_source": "Huntflow API, снято 2026-08-17 10:53 UTC",
   "hope_funnel": "",
   "hope_tth_base": "медиана по 8 последним наймам",
   "hope_no_deadline_list": "Product Manager; Senior Fullstack разработчик (React / Node.js); Генеральный директор; СМО; Фуллстек А+ Холодный поиск; Эксперт по развитию стратегических клиентов и сложных сделок "
