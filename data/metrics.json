@@ -15,7 +15,12 @@
   "pmo_checklist": 69,
   "pmo_due_filled": 5,
   "pmo_report_ok": 71,
-  "hope_voronka_naima": 0.1
+  "hope_vacancies_open": 6,
+  "hope_vacancies_overdue": 0,
+  "hope_funnel_active": 184,
+  "hope_time_to_hire": 47,
+  "hope_offer_to_hire": 100.0,
+  "hope_nagruzka_rekrutera": 1.2
  },
  "history": {
   "pmo_active": [
@@ -246,6 +251,42 @@
    {
     "d": "2026-08-17",
     "v": 0.1
+   }
+  ],
+  "hope_vacancies_open": [
+   {
+    "d": "2026-08-17",
+    "v": 6
+   }
+  ],
+  "hope_vacancies_overdue": [
+   {
+    "d": "2026-08-17",
+    "v": 0
+   }
+  ],
+  "hope_funnel_active": [
+   {
+    "d": "2026-08-17",
+    "v": 184
+   }
+  ],
+  "hope_time_to_hire": [
+   {
+    "d": "2026-08-17",
+    "v": 47
+   }
+  ],
+  "hope_offer_to_hire": [
+   {
+    "d": "2026-08-17",
+    "v": 100.0
+   }
+  ],
+  "hope_nagruzka_rekrutera": [
+   {
+    "d": "2026-08-17",
+    "v": 1.2
    }
   ]
  },
@@ -656,10 +697,12 @@
   ]
  },
  "meta": {
-  "pmo_source": "Kaiten API, board 1347171, снято 2026-08-17 06:55 UTC",
+  "pmo_source": "Kaiten API, board 1347171, снято 2026-08-17 07:27 UTC",
   "pmo_ontime_base": "0 из 4 завершённых, имевших дедлайн",
   "pmo_stuck": "14 из 19 активных сидят в стадии > 30 дн",
-  "hope_source": "Huntflow API, снято 2026-08-17 06:55 UTC"
+  "hope_source": "Huntflow API, снято 2026-08-17 07:27 UTC",
+  "hope_funnel": "Отклик: 23 · Исходящий поиск: 86 · Просмотр заказчиком: 34 · Мессенджер: 16 · Телефонное интервью: 1 · Интервью с HR: 11 · Техническое собеседование: 3 · Собеседование с заказчиком: 4 · Тестовое задание: 0 · Финальное собеседование: 6 · Принятие решения: 0 · Холд - исправить: 0 · Выставлен оффер: 0 · Оффер принят: 0",
+  "hope_tth_base": "медиана по 8 последним наймам"
  },
  "fields": {}
 }
