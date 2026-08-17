@@ -43,3 +43,4 @@ jobs:
           git add data/metrics.json
           git diff --cached --quiet || git commit -m "metrics: $(date -u +%F)"
           git push
+
