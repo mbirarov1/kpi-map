@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-HOPE / найм — сбор данных из Huntflow. Версия 3.
+HOPE / найм — сбор данных из Huntflow. Версия 4 (17.08.2026).
 
 Делает две вещи:
   1) data/hope.json  — детальная выгрузка для страницы «Найм»:
@@ -9,7 +9,13 @@ HOPE / найм — сбор данных из Huntflow. Версия 3.
      рекрутёры (по фактическим действиям в логах), справочники статусов и источников.
   2) data/metrics.json — сводные метрики для борда:
      hope_vacancies_open, hope_vacancies_no_deadline, hope_vacancies_overdue,
-     hope_time_to_hire, hope_time_to_offer, hope_nagruzka_rekrutera, hope_funnel_active
+     hope_time_to_hire, hope_time_to_offer, hope_funnel_active,
+     hope_recruiters_active, hope_vacancies_per_recruiter.
+
+Версия 4 добавляет разрез по рекрутёрам: по каждому кандидату из выборки логов
+определяется, кто им фактически занимался, и это раскладывается по вакансиям и этапам.
+Нагрузка на рекрутёра считается по факту закрепления вакансии за человеком,
+а не делением поровну (так было в версии 3 — расчёт признан неверным).
 
 Персональные данные НЕ выгружаются: ни имён, ни телефонов, ни почт — только id кандидата.
 
@@ -31,7 +37,7 @@ METRICS_FILE = os.path.join(DATA, "metrics.json")
 HOPE_FILE = os.path.join(DATA, "hope.json")
 
 MAX_APPLICANTS_PER_VACANCY = 200   # потолок на вакансию
-MAX_LOGS = 60                      # по скольким кандидатам тянуть логи (для сроков)
+MAX_LOGS = 250                     # по скольким кандидатам тянуть логи (сроки + рекрутёры)
 CLOSED_LOOKBACK_DAYS = 365         # закрытые вакансии за год — для истории
 
 # Этапы, которые считаем «входным пулом», а не активной воронкой
@@ -139,6 +145,8 @@ def main():
     agg = {}          # (вакансия, этап, источник, месяц) -> количество
     appl_rows = []    # временный буфер, наружу НЕ пишется
     seen_applicants = {}
+    applicant_vac = {}
+    applicant_month = {}
     for v in open_v + closed_recent:
         vid = v["id"]
         items = paged(f"/accounts/{acc}/applicants?count=100&page={{page}}&vacancy={vid}",
@@ -160,6 +168,8 @@ def main():
             appl_rows.append({"vac": vid, "stage": sname,
                               "stage_type": st_type.get(sid), "src": src})
             seen_applicants.setdefault(a["id"], sid)
+            applicant_vac.setdefault(a["id"], vid)
+            applicant_month.setdefault(a["id"], month)
         vac_rows.append({
             "id": vid,
             "position": v.get("position"),
@@ -174,9 +184,14 @@ def main():
     print(f"Кандидатов собрано: {len(appl_rows)} по {len(vac_rows)} вакансиям")
 
     # ---------- сроки и рекрутёры (по логам) ----------
-    targets = [aid for aid, sid in seen_applicants.items()
-               if sid in hired_ids or sid in offer_ids][:MAX_LOGS]
+    # приоритет: нанятые и офферные (для сроков), затем остальные кандидаты открытых вакансий
+    prio = [aid for aid, sid in seen_applicants.items() if sid in hired_ids or sid in offer_ids]
+    rest = [aid for aid in seen_applicants if aid not in set(prio)]
+    targets = (prio + rest)[:MAX_LOGS]
     tth, tto, recruiters = [], [], {}
+    rec_agg = {}          # (рекрутёр, вакансия, этап, месяц) -> кандидатов
+    rec_vac = {}          # рекрутёр -> множество вакансий, где он реально работал
+    rec_hired = {}        # рекрутёр -> наймы
     for aid in targets:
         logs = api(f"/accounts/{acc}/applicants/{aid}/logs?count=100", quiet=True)
         items = (logs or {}).get("items", [])
@@ -186,10 +201,25 @@ def main():
         if not dates:
             continue
         start = min(dates)
+        by_who = {}
         for x in items:
             who = (x.get("account_info") or {}).get("name") or x.get("account")
             if who:
                 recruiters[str(who)] = recruiters.get(str(who), 0) + 1
+                by_who[str(who)] = by_who.get(str(who), 0) + 1
+        # ведущий рекрутёр кандидата — кто сделал больше всего действий по нему
+        lead = max(by_who.items(), key=lambda kv: kv[1])[0] if by_who else None
+        cur = seen_applicants.get(aid)
+        cur_vac = applicant_vac.get(aid)
+        if lead:
+            if cur_vac:
+                rec_vac.setdefault(lead, set()).add(cur_vac)
+            month = applicant_month.get(aid) or ""
+            stage = st_name.get(cur, "—")
+            k = (lead, cur_vac, stage, month)
+            rec_agg[k] = rec_agg.get(k, 0) + 1
+            if cur in hired_ids:
+                rec_hired[lead] = rec_hired.get(lead, 0) + 1
         h = [d(x.get("created")) for x in items if x.get("status") in hired_ids and d(x.get("created"))]
         o = [d(x.get("created")) for x in items if x.get("status") in offer_ids and d(x.get("created"))]
         if h:
@@ -202,6 +232,7 @@ def main():
                 tto.append(n)
     print(f"Time to hire: {len(tth)} набл., медиана {median(tth)}; "
           f"Time to offer: {len(tto)} набл., медиана {median(tto)}")
+    print("Логов просканировано по кандидатам: %d" % len(targets))
     print("Активность в логах по людям: " + ", ".join(
         f"{k}:{v}" for k, v in sorted(recruiters.items(), key=lambda x: -x[1])[:8]))
 
@@ -234,6 +265,12 @@ def main():
                 for k, v in sorted(agg.items(), key=lambda x: -x[1])],
         "funnel": funnel,
         "recruiter_activity": recruiters,
+        # разрез по рекрутёрам: кто, по какой вакансии, на каком этапе, в каком месяце
+        "rec_agg": [{"rec": k[0], "vac": k[1], "stage": k[2], "m": k[3], "n": v}
+                    for k, v in sorted(rec_agg.items(), key=lambda x: -x[1])],
+        "rec_vac": {k: sorted(v) for k, v in rec_vac.items()},
+        "rec_hired": rec_hired,
+        "logs_scanned": len(targets),
         "tth": tth, "tto": tto,
     }
     os.makedirs(DATA, exist_ok=True)
@@ -242,7 +279,12 @@ def main():
     print(f"OK: data/hope.json — {os.path.getsize(HOPE_FILE)//1024} КБ")
 
     # ---------- сводные метрики ----------
-    n_rec = len([k for k, v in recruiters.items() if v >= 5]) or None
+    # активные рекрутёры — те, за кем реально закреплена хотя бы одна открытая вакансия
+    open_ids = set(v["id"] for v in open_v)
+    rec_open = {k: [x for x in vs if x in open_ids] for k, vs in rec_vac.items()}
+    rec_open = {k: v for k, v in rec_open.items() if v}
+    n_rec = len(rec_open) or None
+    per_rec = (round(sum(len(v) for v in rec_open.values()) / n_rec, 1) if n_rec else None)
     values = {
         "hope_vacancies_open": len(open_v),
         "hope_vacancies_no_deadline": len(no_deadline),
@@ -250,7 +292,8 @@ def main():
         "hope_time_to_hire": median(tth),
         "hope_time_to_offer": median(tto),
         "hope_funnel_active": active or None,
-        "hope_nagruzka_rekrutera": round(len(open_v) / n_rec, 1) if n_rec else None,
+        "hope_recruiters_active": n_rec,
+        "hope_vacancies_per_recruiter": per_rec,
     }
     values = {k: v for k, v in values.items() if v is not None}
     print("Насчитано:", json.dumps(values, ensure_ascii=False))
@@ -260,7 +303,8 @@ def main():
     if os.path.exists(METRICS_FILE):
         with open(METRICS_FILE, encoding="utf-8") as f:
             data = json.load(f)
-    for old in ("hope_voronka_naima", "hope_offer_to_hire", "hope_cost_per_hire"):
+    for old in ("hope_voronka_naima", "hope_offer_to_hire", "hope_cost_per_hire",
+                "hope_nagruzka_rekrutera"):
         data.get("values", {}).pop(old, None)
     data["updated"] = today.isoformat()
     data["values"].update(values)
