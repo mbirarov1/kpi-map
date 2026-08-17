@@ -5,7 +5,7 @@
   "pmo_stale": 10,
   "pmo_done30": 0,
   "pmo_leadtime": 105,
-  "pmo_blocked": 1,
+  "pmo_blocked": 0,
   "pmo_overdue": 0,
   "pmo_strukturnaya_celostnost": 58,
   "pmo_queue": 5,
@@ -104,7 +104,7 @@
    },
    {
     "d": "2026-08-17",
-    "v": 1
+    "v": 0
    }
   ],
   "pmo_overdue": [
@@ -550,15 +550,7 @@
     "d": 4
    }
   ],
-  "blocked": [
-   {
-    "id": 68027875,
-    "t": "Запустить платформенную команду Core как техническую горизонталь CTO",
-    "o": "Вячеслав",
-    "col": "Определение стейкхолдеров и их ожиданий",
-    "d": null
-   }
-  ],
+  "blocked": [],
   "overdue": [],
   "queue": [
    {
@@ -657,7 +649,7 @@
   ]
  },
  "meta": {
-  "pmo_source": "Kaiten API, board 1347171, снято 2026-08-17 05:56 UTC",
+  "pmo_source": "Kaiten API, board 1347171, снято 2026-08-17 06:35 UTC",
   "pmo_ontime_base": "0 из 4 завершённых, имевших дедлайн",
   "pmo_stuck": "14 из 19 активных сидят в стадии > 30 дн"
  },
