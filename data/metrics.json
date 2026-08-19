@@ -15,11 +15,11 @@
   "pmo_checklist": 71,
   "pmo_due_filled": 5,
   "pmo_report_ok": 71,
-  "hope_vacancies_open": 7,
+  "hope_vacancies_open": 8,
   "hope_vacancies_overdue": 0,
   "hope_funnel_active": 184,
   "hope_time_to_hire": 47,
-  "hope_vacancies_no_deadline": 7,
+  "hope_vacancies_no_deadline": 8,
   "cpo_roadmap_q_gotovnost": 0,
   "cpo_roadmap_stale": 2,
   "cpo_roadmap_pipeline": 7,
@@ -386,7 +386,7 @@
    },
    {
     "d": "2026-08-19",
-    "v": 7
+    "v": 8
    }
   ],
   "hope_vacancies_overdue": [
@@ -438,7 +438,7 @@
    },
    {
     "d": "2026-08-19",
-    "v": 7
+    "v": 8
    }
   ],
   "cpo_roadmap_q_gotovnost": [
@@ -1017,16 +1017,16 @@
   ]
  },
  "meta": {
-  "pmo_source": "Kaiten API, board 1347171, снято 2026-08-19 14:58 UTC",
+  "pmo_source": "Kaiten API, board 1347171, снято 2026-08-19 15:29 UTC",
   "pmo_ontime_base": "0 из 4 завершённых, имевших дедлайн",
   "pmo_stuck": "14 из 19 активных сидят в стадии > 30 дн",
-  "hope_source": "Huntflow API, снято 2026-08-19 06:22 UTC",
+  "hope_source": "Huntflow API, снято 2026-08-19 15:29 UTC",
   "hope_funnel": "",
   "hope_tth_base": "медиана по 8 последним наймам",
-  "hope_no_deadline_list": "DevOps-инженер; Product Manager; Senior Fullstack разработчик (React / Node.js); Генеральный директор; СМО; Фуллстек А+ Холодный поиск; Эксперт по развитию стратегических клиентов и сложных сделок ",
+  "hope_no_deadline_list": "DevOps-инженер; Product Manager; Senior Fullstack разработчик (React / Node.js); Бухгалтер; Генеральный директор; СМО; Фуллстек А+ Холодный поиск; Эксперт по развитию стратегических клиентов и сложных сделок ",
   "cpo_roadmap_base": "Q3 2026: 0 из 17 пунктов доехали до проверки или оценки цели",
-  "cpo_roadmap_src": "Kaiten, доска Roadmap public (1682987), снято 2026-08-19 14:59 UTC",
-  "cto_src": "Kaiten, пространство CTO (доски 1729754, 1729752), всего 46 карточек, снято 2026-08-19 14:59 UTC",
+  "cpo_roadmap_src": "Kaiten, доска Roadmap public (1682987), снято 2026-08-19 15:29 UTC",
+  "cto_src": "Kaiten, пространство CTO (доски 1729754, 1729752), всего 46 карточек, снято 2026-08-19 15:29 UTC",
   "cto_platform_base": "19 инициатив всего, дедлайн проставлен у 2",
   "cto_analytics_base": "19 карточек на доске «Аналитика»"
  },
