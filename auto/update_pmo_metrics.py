@@ -31,11 +31,15 @@ STALE_DAYS = 14             # порог свежести — п. 1.10
 AGING_DAYS = 30             # порог «застрял в стадии»
 DATA_FILE = os.path.join(os.path.dirname(__file__), "..", "data", "metrics.json")
 
-ACTIVE_STAGES = ["Инициация", "Определение стейкхолдеров", "Согласование целей",
+# Итог встречи 19.08.2026 (Хетагурова): WIP-лимит считается от «Определение
+# стейкхолдеров» до «Реализация проекта». Инициация — входной поток (очередь),
+# Приемка — выходной хвост, в WIP не входят.
+ACTIVE_STAGES = ["Определение стейкхолдеров", "Согласование целей",
                  "Цели и ожидания", "Планирование", "Декомпозиция", "Согласовано",
-                 "Реализация проекта", "Приемка"]
+                 "Реализация проекта"]
+ACCEPT_STAGES = ["Приемка"]
 QUEUE_STAGES = ["Подготовка к квалификации", "Квалификация", "На рассмотрение",
-                "Зеленый свет", "Ждет освобождения лимита"]
+                "Зеленый свет", "Ждет освобождения лимита", "Инициация"]
 DONE_STAGES = ["Завершен успешно", "Административно завершен"]
 
 # Кастомные поля паспорта проекта (id → смысл)
@@ -129,6 +133,9 @@ def main():
     gsum = sum(r["gt"] for r in act)
     gdone = sum(r["gd"] for r in act)
     due_filled = [r for r in act if r["due"]]
+    load = {}
+    for r in act:
+        load[r["o"]] = load.get(r["o"], 0) + 1
     passport = [r for r in act if r["goal"] and r["rp"] and r["ks"] and r["cat"] and r["strat"]]
     rep_ok = [r for r in done if r["rep_ok"]]
 
@@ -148,6 +155,9 @@ def main():
         "pmo_due_filled": pct(len(due_filled), len(act)),
         "pmo_strukturnaya_celostnost": pct(len(passport), len(act)),
         "pmo_report_ok": pct(len(rep_ok), len(done)),
+        # 19.08: новые метрики со встречи
+        "pmo_no_deadline": len(act) - len(due_filled),
+        "pmo_per_rp": max(load.values()) if load else 0,
     }
 
     comp_item = lambda r, dv: {"id": r["id"], "t": r["t"], "o": r["o"], "col": r["col"], "d": dv}
@@ -173,6 +183,8 @@ def main():
     data["meta"]["pmo_source"] = f"Kaiten API, board {BOARD_ID}, снято {now.strftime('%Y-%m-%d %H:%M UTC')}"
     data["meta"]["pmo_ontime_base"] = f"{len(on_time)} из {len(had_due)} завершённых, имевших дедлайн"
     data["meta"]["pmo_stuck"] = f"{len(stuck)} из {len(act)} активных сидят в стадии > {AGING_DAYS} дн"
+    top_load = sorted(load.items(), key=lambda x: -x[1])[:5]
+    data["meta"]["pmo_load"] = "; ".join(f"{o}: {n}" for o, n in top_load)
 
     for key, val in values.items():
         if val is None:
