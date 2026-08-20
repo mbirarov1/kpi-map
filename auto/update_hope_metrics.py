@@ -147,10 +147,24 @@ def main():
     seen_applicants = {}
     applicant_vac = {}
     applicant_month = {}
+    # 20.08.2026: фильтр ?vacancy= на GET /applicants отдаёт HTTP 400 —
+    # Huntflow больше не принимает его на этом эндпоинте. Забираем кандидатов
+    # общим списком и раскладываем по вакансиям локально через links[].
+    wanted = {v["id"] for v in open_v + closed_recent}
+    all_appl = paged(f"/accounts/{acc}/applicants?count=100&page={{page}}", limit_pages=60)
+    print(f"Кандидатов в общем списке: {len(all_appl)}")
+    if not all_appl:
+        # запасной путь: эндпоинт поиска
+        all_appl = paged(f"/accounts/{acc}/applicants/search?count=100&page={{page}}", limit_pages=60)
+        print(f"Через search: {len(all_appl)}")
+    by_vac = {}
+    for a in all_appl:
+        for l in (a.get("links") or []):
+            if l.get("vacancy") in wanted:
+                by_vac.setdefault(l["vacancy"], []).append(a)
     for v in open_v + closed_recent:
         vid = v["id"]
-        items = paged(f"/accounts/{acc}/applicants?count=100&page={{page}}&vacancy={vid}",
-                      limit_pages=max(1, MAX_APPLICANTS_PER_VACANCY // 100))
+        items = by_vac.get(vid, [])[:MAX_APPLICANTS_PER_VACANCY]
         stage_counts = {}
         for a in items:
             link = None
