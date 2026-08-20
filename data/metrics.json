@@ -17,7 +17,7 @@
   "pmo_report_ok": 71,
   "hope_vacancies_open": 8,
   "hope_vacancies_overdue": 0,
-  "hope_funnel_active": 184,
+  "hope_funnel_active": 19,
   "hope_time_to_hire": 47,
   "hope_vacancies_no_deadline": 8,
   "cpo_roadmap_q_gotovnost": 0,
@@ -32,7 +32,10 @@
   "cto_platform_wip": 10,
   "cto_analytics_wip": 2,
   "pmo_no_deadline": 14,
-  "pmo_per_rp": 6
+  "pmo_per_rp": 6,
+  "hope_time_to_offer": 32,
+  "hope_recruiters_active": 6,
+  "hope_vacancies_per_recruiter": 1.8
  },
  "history": {
   "pmo_active": [
@@ -473,11 +476,19 @@
    {
     "d": "2026-08-17",
     "v": 184
+   },
+   {
+    "d": "2026-08-20",
+    "v": 19
    }
   ],
   "hope_time_to_hire": [
    {
     "d": "2026-08-17",
+    "v": 47
+   },
+   {
+    "d": "2026-08-20",
     "v": 47
    }
   ],
@@ -719,6 +730,24 @@
    {
     "d": "2026-08-20",
     "v": 6
+   }
+  ],
+  "hope_time_to_offer": [
+   {
+    "d": "2026-08-20",
+    "v": 32
+   }
+  ],
+  "hope_recruiters_active": [
+   {
+    "d": "2026-08-20",
+    "v": 6
+   }
+  ],
+  "hope_vacancies_per_recruiter": [
+   {
+    "d": "2026-08-20",
+    "v": 1.8
    }
   ]
  },
@@ -1066,16 +1095,16 @@
   ]
  },
  "meta": {
-  "pmo_source": "Kaiten API, board 1347171, снято 2026-08-20 11:50 UTC",
+  "pmo_source": "Kaiten API, board 1347171, снято 2026-08-20 11:59 UTC",
   "pmo_ontime_base": "0 из 4 завершённых, имевших дедлайн",
   "pmo_stuck": "10 из 15 активных сидят в стадии > 30 дн",
-  "hope_source": "Huntflow API, снято 2026-08-20 11:50 UTC",
-  "hope_funnel": "",
+  "hope_source": "Huntflow API, снято 2026-08-20 11:59 UTC",
+  "hope_funnel": "Исходящий поиск: 98 · Отклик: 52 · Просмотр заказчиком: 51 · Мессенджер: 22 · Резерв: 21 · Интервью с HR: 7 · Телефонное интервью: 5 · Финальное собеседование: 4 · Техническое собеседование: 3",
   "hope_tth_base": "медиана по 8 последним наймам",
   "hope_no_deadline_list": "DevOps-инженер; Product Manager; Senior Fullstack разработчик (React / Node.js); Бухгалтер; Генеральный директор; СМО; Фуллстек А+ Холодный поиск; Эксперт по развитию стратегических клиентов и сложных сделок ",
   "cpo_roadmap_base": "Q3 2026: 0 из 17 пунктов доехали до проверки или оценки цели",
-  "cpo_roadmap_src": "Kaiten, доска Roadmap public (1682987), снято 2026-08-20 11:50 UTC",
-  "cto_src": "Kaiten, пространство CTO (доски 1729754, 1729752), всего 41 карточек, снято 2026-08-20 11:50 UTC",
+  "cpo_roadmap_src": "Kaiten, доска Roadmap public (1682987), снято 2026-08-20 11:59 UTC",
+  "cto_src": "Kaiten, пространство CTO (доски 1729754, 1729752), всего 41 карточек, снято 2026-08-20 11:59 UTC",
   "cto_platform_base": "19 инициатив всего, дедлайн проставлен у 2",
   "cto_analytics_base": "19 карточек на доске «Аналитика»",
   "pmo_load": "Вячеслав: 6; Лебедева: 2; Владимир: 1; Алексей: 1; Ксения: 1"
