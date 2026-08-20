@@ -147,24 +147,28 @@ def main():
     seen_applicants = {}
     applicant_vac = {}
     applicant_month = {}
-    # 20.08.2026: фильтр ?vacancy= на GET /applicants отдаёт HTTP 400 —
-    # Huntflow больше не принимает его на этом эндпоинте. Забираем кандидатов
-    # общим списком и раскладываем по вакансиям локально через links[].
-    wanted = {v["id"] for v in open_v + closed_recent}
-    all_appl = paged(f"/accounts/{acc}/applicants?count=100&page={{page}}", limit_pages=60)
-    print(f"Кандидатов в общем списке: {len(all_appl)}")
-    if not all_appl:
-        # запасной путь: эндпоинт поиска
-        all_appl = paged(f"/accounts/{acc}/applicants/search?count=100&page={{page}}", limit_pages=60)
-        print(f"Через search: {len(all_appl)}")
-    by_vac = {}
-    for a in all_appl:
-        for l in (a.get("links") or []):
-            if l.get("vacancy") in wanted:
-                by_vac.setdefault(l["vacancy"], []).append(a)
+    # 20.08.2026: GET /applicants (и с ?vacancy=, и без) отдаёт HTTP 400.
+    # Рабочий путь: /applicants/search?vacancy= даёт список id по вакансии,
+    # а статусы/links добираем из карточки кандидата (с кэшем и потолком).
+    DETAIL_CAP = 700          # максимум карточек кандидатов за прогон
+    details = {}
     for v in open_v + closed_recent:
         vid = v["id"]
-        items = by_vac.get(vid, [])[:MAX_APPLICANTS_PER_VACANCY]
+        found = paged(f"/accounts/{acc}/applicants/search?count=100&page={{page}}&vacancy={vid}",
+                      limit_pages=max(1, MAX_APPLICANTS_PER_VACANCY // 100))
+        items = []
+        for a0 in found:
+            aid = a0.get("id")
+            if not aid:
+                continue
+            if aid in details:
+                items.append(details[aid]); continue
+            if len(details) >= DETAIL_CAP:
+                continue
+            det = api(f"/accounts/{acc}/applicants/{aid}", quiet=True) or {}
+            if det.get("id"):
+                details[aid] = det
+                items.append(det)
         stage_counts = {}
         for a in items:
             link = None
@@ -195,7 +199,7 @@ def main():
             "applicants": len(items),
             "stages": stage_counts,
         })
-    print(f"Кандидатов собрано: {len(appl_rows)} по {len(vac_rows)} вакансиям")
+    print(f"Кандидатов собрано: {len(appl_rows)} по {len(vac_rows)} вакансиям; карточек скачано: {len(details)}")
 
     # ---------- сроки и рекрутёры (по логам) ----------
     # приоритет: нанятые и офферные (для сроков), затем остальные кандидаты открытых вакансий
