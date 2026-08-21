@@ -274,6 +274,17 @@ def main():
         if a["stage_type"] == "hired":
             s["hired"] += 1
 
+    # ---------- все рекрутёры аккаунта (20.08: полный список, не только активные в логах) ----------
+    coworkers = []
+    try:
+        cw = paged(f"/accounts/{acc}/coworkers?count=100&page={{page}}")
+        for c in cw:
+            nm = c.get("name") or c.get("email") or "?"
+            coworkers.append({"name": nm, "type": c.get("type") or ""})
+        print(f"Аккаунтов в Huntflow: {len(coworkers)}")
+    except Exception as e:
+        print("coworkers: " + str(e)[:120])
+
     # ---------- запись hope.json ----------
     hope = {
         "generated": now.strftime("%Y-%m-%d %H:%M UTC"),
@@ -288,6 +299,7 @@ def main():
                     for k, v in sorted(rec_agg.items(), key=lambda x: -x[1])],
         "rec_vac": {k: sorted(v) for k, v in rec_vac.items()},
         "rec_hired": rec_hired,
+        "coworkers": coworkers,
         "logs_scanned": len(targets),
         "tth": tth, "tto": tto,
     }

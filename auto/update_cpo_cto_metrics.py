@@ -193,6 +193,49 @@ def main():
     except Exception as e:
         meta["cto_analytics_error"] = str(e)[:160]
 
+    # ---------------- CTO: пространства Олега (20.08.2026, только агрегаты) ----------------
+    # Product 583628: Бэклог 1316717, Реализация 1316732; Infra 166558: 411459, 411460;
+    # Инциденты 484349: доска 1108956. Наружу идут ТОЛЬКО числа, без названий карточек.
+    DONE_W = ("готово", "завершен", "завершён", "done", "закрыт", "решен", "решён")
+    def _done(c): return any_of(col(c), DONE_W)
+    try:
+        pb = cards(1316717)
+        pr = cards(1316732)
+        values["cto_product_backlog"] = len([c for c in pb if not _done(c)])
+        values["cto_product_wip"] = len([c for c in pr if not _done(c)])
+        values["cto_product_done30"] = len([c for c in pr if _done(c) and (age(c.get("updated"), today) or 999) <= 30])
+        meta["cto_product_src"] = "Kaiten, Platform::Product, снято %s" % now.strftime("%Y-%m-%d %H:%M UTC")
+    except Exception as e:
+        meta["cto_product_error"] = str(e)[:160]
+    try:
+        ib = cards(411459)
+        ir = cards(411460)
+        values["cto_infra_backlog"] = len([c for c in ib if not _done(c)])
+        values["cto_infra_wip"] = len([c for c in ir if not _done(c)])
+        values["cto_infra_done30"] = len([c for c in ir if _done(c) and (age(c.get("updated"), today) or 999) <= 30])
+    except Exception as e:
+        meta["cto_infra_error"] = str(e)[:160]
+    try:
+        inc = cards(1108956)
+        inc_open = [c for c in inc if not _done(c)]
+        inc_done = [c for c in inc if _done(c)]
+        new30 = [c for c in inc if (age(c.get("created"), today) or 999) <= 30]
+        closed30 = [c for c in inc_done if (age(c.get("updated"), today) or 999) <= 30]
+        mttr = []
+        for c in closed30:
+            a1 = age(c.get("created"), today); a2 = age(c.get("updated"), today)
+            if a1 is not None and a2 is not None and a1 >= a2:
+                mttr.append(a1 - a2)
+        mttr.sort()
+        values["cto_incidents_open"] = len(inc_open)
+        values["cto_incidents_new30"] = len(new30)
+        values["cto_incidents_closed30"] = len(closed30)
+        if mttr:
+            values["cto_incidents_mttr"] = mttr[len(mttr)//2]
+        meta["cto_incidents_base"] = "%d карточек всего на доске инцидентов" % len(inc)
+    except Exception as e:
+        meta["cto_incidents_error"] = str(e)[:160]
+
     # ---------------- запись ----------------
     data = {"updated": "", "values": {}, "history": {}, "comps": {}, "meta": {}, "fields": {}}
     if os.path.exists(DATA_FILE):

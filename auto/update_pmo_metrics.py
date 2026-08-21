@@ -106,6 +106,7 @@ def main():
             "gt": c.get("goals_total") or 0,
             "goal": bool(p.get(P_GOAL)),
             "rp": bool(p.get(P_RP)),
+            "rps": [u.get("full_name") or "?" for u in (p.get(P_RP) or []) if isinstance(u, dict)],
             "ks": bool(p.get(P_KEYSTAKE)),
             "strat": bool(p.get(P_STRAT)),
             "cat": bool(p.get(P_CATEGORY)),
@@ -133,9 +134,11 @@ def main():
     gsum = sum(r["gt"] for r in act)
     gdone = sum(r["gd"] for r in act)
     due_filled = [r for r in act if r["due"]]
-    load = {}
+    load = {}          # нагрузка по полю «РП» паспорта (19.08: норма 2 на человека)
     for r in act:
-        load[r["o"]] = load.get(r["o"], 0) + 1
+        names = r.get("rps") or ["— РП не назначен"]
+        for n in names:
+            load[n] = load.get(n, 0) + 1
     passport = [r for r in act if r["goal"] and r["rp"] and r["ks"] and r["cat"] and r["strat"]]
     rep_ok = [r for r in done if r["rep_ok"]]
 
@@ -157,7 +160,7 @@ def main():
         "pmo_report_ok": pct(len(rep_ok), len(done)),
         # 19.08: новые метрики со встречи
         "pmo_no_deadline": len(act) - len(due_filled),
-        "pmo_per_rp": max(load.values()) if load else 0,
+        "pmo_per_rp": max([v for k, v in load.items() if not k.startswith("—")] or [0]),
     }
 
     comp_item = lambda r, dv: {"id": r["id"], "t": r["t"], "o": r["o"], "col": r["col"], "d": dv}
