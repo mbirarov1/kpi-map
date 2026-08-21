@@ -24,7 +24,7 @@
   "cpo_roadmap_stale": 2,
   "cpo_roadmap_pipeline": 7,
   "cpo_roadmap_ideas": 7,
-  "cto_wip_cto": 12,
+  "cto_wip_cto": 13,
   "cto_done30_cto": 16,
   "cto_stale14_cto": 9,
   "cto_blocked_cto": 6,
@@ -32,10 +32,20 @@
   "cto_platform_wip": 10,
   "cto_analytics_wip": 2,
   "pmo_no_deadline": 14,
-  "pmo_per_rp": 6,
+  "pmo_per_rp": 4,
   "hope_time_to_offer": 32,
   "hope_recruiters_active": 6,
-  "hope_vacancies_per_recruiter": 1.8
+  "hope_vacancies_per_recruiter": 1.8,
+  "cto_product_backlog": 77,
+  "cto_product_wip": 7,
+  "cto_product_done30": 1,
+  "cto_infra_backlog": 0,
+  "cto_infra_wip": 22,
+  "cto_infra_done30": 0,
+  "cto_incidents_open": 9,
+  "cto_incidents_new30": 18,
+  "cto_incidents_closed30": 11,
+  "cto_incidents_mttr": 10
  },
  "history": {
   "pmo_active": [
@@ -705,7 +715,7 @@
    },
    {
     "d": "2026-08-21",
-    "v": 12
+    "v": 13
    }
   ],
   "cto_done30_cto": [
@@ -857,7 +867,7 @@
    },
    {
     "d": "2026-08-21",
-    "v": 6
+    "v": 4
    }
   ],
   "hope_time_to_offer": [
@@ -888,6 +898,66 @@
    {
     "d": "2026-08-21",
     "v": 1.8
+   }
+  ],
+  "cto_product_backlog": [
+   {
+    "d": "2026-08-21",
+    "v": 77
+   }
+  ],
+  "cto_product_wip": [
+   {
+    "d": "2026-08-21",
+    "v": 7
+   }
+  ],
+  "cto_product_done30": [
+   {
+    "d": "2026-08-21",
+    "v": 1
+   }
+  ],
+  "cto_infra_backlog": [
+   {
+    "d": "2026-08-21",
+    "v": 0
+   }
+  ],
+  "cto_infra_wip": [
+   {
+    "d": "2026-08-21",
+    "v": 22
+   }
+  ],
+  "cto_infra_done30": [
+   {
+    "d": "2026-08-21",
+    "v": 0
+   }
+  ],
+  "cto_incidents_open": [
+   {
+    "d": "2026-08-21",
+    "v": 9
+   }
+  ],
+  "cto_incidents_new30": [
+   {
+    "d": "2026-08-21",
+    "v": 18
+   }
+  ],
+  "cto_incidents_closed30": [
+   {
+    "d": "2026-08-21",
+    "v": 11
+   }
+  ],
+  "cto_incidents_mttr": [
+   {
+    "d": "2026-08-21",
+    "v": 10
    }
   ]
  },
@@ -1242,7 +1312,7 @@
   ]
  },
  "meta": {
-  "pmo_source": "Kaiten API, board 1347171, снято 2026-08-21 12:21 UTC",
+  "pmo_source": "Kaiten API, board 1347171, снято 2026-08-21 13:23 UTC",
   "pmo_ontime_base": "0 из 4 завершённых, имевших дедлайн",
   "pmo_stuck": "10 из 15 активных сидят в стадии > 30 дн",
   "hope_source": "Huntflow API, снято 2026-08-21 06:23 UTC",
@@ -1250,11 +1320,13 @@
   "hope_tth_base": "медиана по 8 последним наймам",
   "hope_no_deadline_list": "DevOps-инженер; Product Manager; Senior Fullstack разработчик (React / Node.js); Бухгалтер; Генеральный директор; СМО; Фуллстек А+ Холодный поиск; Эксперт по развитию стратегических клиентов и сложных сделок ",
   "cpo_roadmap_base": "Q3 2026: 0 из 17 пунктов доехали до проверки или оценки цели",
-  "cpo_roadmap_src": "Kaiten, доска Roadmap public (1682987), снято 2026-08-21 12:21 UTC",
-  "cto_src": "Kaiten, пространство CTO (доски 1729754, 1729752), всего 45 карточек, снято 2026-08-21 12:21 UTC",
+  "cpo_roadmap_src": "Kaiten, доска Roadmap public (1682987), снято 2026-08-21 13:23 UTC",
+  "cto_src": "Kaiten, пространство CTO (доски 1729754, 1729752), всего 47 карточек, снято 2026-08-21 13:23 UTC",
   "cto_platform_base": "21 инициатив всего, дедлайн проставлен у 2",
   "cto_analytics_base": "19 карточек на доске «Аналитика»",
-  "pmo_load": "Вячеслав: 6; Лебедева: 2; Владимир: 1; Алексей: 1; Ксения: 1"
+  "pmo_load": "Мария Хетагурова: 4; Дин Ибраимов: 3; Екатерина Кокова: 3; Екатерина Алиева: 2; Лебедева Дарья: 1",
+  "cto_product_src": "Kaiten, Platform::Product, снято 2026-08-21 13:23 UTC",
+  "cto_incidents_base": "23 карточек всего на доске инцидентов"
  },
  "fields": {}
 }
