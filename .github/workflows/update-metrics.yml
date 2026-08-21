@@ -29,6 +29,11 @@ jobs:
           KAITEN_TOKEN: ${{ secrets.KAITEN_TOKEN }}
         run: python3 auto/update_cpo_cto_metrics.py
 
+      - name: Pull CMO tables via web app
+        env:
+          CMO_WEBAPP_URL: ${{ secrets.CMO_WEBAPP_URL }}
+        run: python3 auto/update_cmo_webapp.py
+
       # Таблица-источник / витрина (если включена)
       - name: Pull metrics from source sheet
         if: ${{ vars.SOURCE_ENABLED == 'true' }}
