@@ -42,6 +42,8 @@ def main():
                 wk += 1
                 d = (base + datetime.timedelta(days=7 * (wk - 1))).isoformat()
                 cr = num(r[14] if len(r) > 14 else None)
+                if cr is not None and cr <= 1:
+                    cr = cr * 100  # raw getValues отдаёт доли (0.0712), CSV отдавал проценты
                 cd = num(r[18] if len(r) > 18 else None)
                 if cr is not None: cr_hist.append({"d": d, "v": round(cr, 2)})
                 if cd is not None: cdx_hist.append({"d": d, "v": cd})
