@@ -71,6 +71,45 @@ def main():
     else:
         print("когортная: " + str(j.get("cohort_error"))[:120])
 
+    # Трек метрик (18zR…): листы MRR A+/B/CDX, последняя точка замера в строках ставок.
+    # В таблице доли (0.0278) и местами уже проценты (3.16) — правило: v<=1 -> x100.
+    TREK = [("A+", "1596315827"), ("B", "2086128744"), ("CDX", "1473929562")]
+    ROWS = {"MRR Growth rate": "seg_mrr_growth_rate",
+            "NEW MRR growth rate": "seg_new_mrr_growth_rate",
+            "MRR Expansion rate": "seg_mrr_expansion_rate",
+            "MRR Contraction Rate": "seg_mrr_contraction_rate",
+            "MRR Churn Rate": "seg_mrr_churn_rate"}
+    seg_parts = {k: [] for k in ROWS.values()}
+    sep = "&" if "?" in URL else "?"
+    trek_ok = 0
+    for seg, gid in TREK:
+        try:
+            req2 = urllib.request.Request(URL + sep + "src=trek&gid=" + gid,
+                                          headers={"User-Agent": "kpi-map-bot"})
+            with urllib.request.urlopen(req2, timeout=120) as r2:
+                tv = json.load(r2).get("values") or []
+        except Exception as ex:
+            print("трек %s: ошибка %s" % (seg, str(ex)[:80]))
+            continue
+        trek_ok += 1
+        for row in tv:
+            name = str(row[0] if row else "").strip()
+            if name not in ROWS:
+                continue
+            last = None
+            for cell in row[1:]:
+                if isinstance(cell, (int, float)):
+                    last = float(cell)
+            if last is None:
+                continue
+            pct = last * 100 if abs(last) <= 1 else last
+            seg_parts[ROWS[name]].append("%s %s %%" % (seg, str(round(pct * 10) / 10).replace(".", ",")))
+    for key, parts in seg_parts.items():
+        if parts:
+            values[key] = " · ".join(parts)
+    if trek_ok:
+        print("трек: %d листов, метрик собрано %d" % (trek_ok, sum(1 for p in seg_parts.values() if p)))
+
     data = {"updated": "", "values": {}, "history": {}, "comps": {}, "meta": {}, "fields": {}}
     if os.path.exists(DATA_FILE):
         with open(DATA_FILE, encoding="utf-8") as f:
@@ -80,6 +119,10 @@ def main():
     data.setdefault("history", {}).update(history)
     data.setdefault("meta", {})["cmo_webapp_source"] = (
         "Веб-приложение (сводная+когортная), снято %s UTC" % datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M"))
+    if trek_ok:
+        data["meta"]["seg_trek_source"] = (
+            "Трек метрик, листы MRR A+/B/CDX (веб-приложение), снято %s UTC"
+            % datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M"))
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
     print("OK: %d значений, %d рядов истории" % (len(values), len(history)))
