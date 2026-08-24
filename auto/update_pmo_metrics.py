@@ -92,6 +92,7 @@ def main():
         rows.append({
             "id": c["id"],
             "t": (c.get("title") or "")[:70],
+            "tf": (c.get("title") or "")[:160],
             "o": (c.get("owner") or {}).get("full_name", "—").split()[0] if c.get("owner") else "—",
             "col": col.split("|")[-1] if "|" in col else col,
             "colfull": col,
@@ -199,6 +200,40 @@ def main():
     os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=1)
+
+    # --- data/pmo.json: детальный разрез по проектам и РП для страницы pmo.html ---
+    accept = [r for r in rows if stage(r, ACCEPT_STAGES)]
+
+    def proj(r, state):
+        return {
+            "id": r["id"], "t": r["tf"], "rps": r.get("rps") or [],
+            "col": r["col"], "state": state,
+            "days_stage": (today - r["cca"]).days if r["cca"] else None,
+            "days_upd": (today - r["upd"]).days if r["upd"] else None,
+            "created": r["created"].isoformat() if r["created"] else None,
+            "due": r["due"].isoformat() if r["due"] else None,
+            "done": r["done_at"].isoformat() if r["done_at"] else None,
+            "blocked": r["blocked"],
+            "gd": r["gd"], "gt": r["gt"],
+            "passport": bool(r["goal"] and r["rp"] and r["ks"] and r["cat"] and r["strat"]),
+        }
+
+    pmo = {
+        "generated": now.strftime("%Y-%m-%d %H:%M UTC"),
+        "rp_norm": 2,
+        "limit_portfolio": LIMIT_PORTFOLIO,
+        "stale_days": STALE_DAYS,
+        "aging_days": AGING_DAYS,
+        "projects": ([proj(r, "active") for r in act]
+                     + [proj(r, "queue") for r in queue]
+                     + [proj(r, "accept") for r in accept]
+                     + [proj(r, "done30") for r in done30]),
+    }
+    pmo_file = os.path.join(os.path.dirname(DATA_FILE), "pmo.json")
+    with open(pmo_file, "w", encoding="utf-8") as f:
+        json.dump(pmo, f, ensure_ascii=False, separators=(",", ":"))
+    print("pmo.json: проектов %d (акт. %d, очередь %d, приёмка %d, done30 %d)"
+          % (len(pmo["projects"]), len(act), len(queue), len(accept), len(done30)))
 
     print("OK:", json.dumps(values, ensure_ascii=False))
 
