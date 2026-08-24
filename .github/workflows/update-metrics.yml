@@ -48,8 +48,10 @@ jobs:
         run: python3 auto/update_source_sheet.py
 
       # HOPE: только утренний и вечерний прогон + любой ручной запуск
+      # continue-on-error: мёртвый токен Huntflow не должен блокировать коммит остальных данных
       - name: Pull HOPE metrics from Huntflow
         if: ${{ vars.HUNTFLOW_ENABLED == 'true' }}
+        continue-on-error: true
         env:
           HUNTFLOW_TOKEN: ${{ secrets.HUNTFLOW_TOKEN }}
           EVENT: ${{ github.event_name }}
