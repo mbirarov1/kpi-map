@@ -68,6 +68,7 @@ jobs:
           # hope.json тоже коммитим — без него страница «Найм» пустая
           git add data/metrics.json
           [ -f data/hope.json ] && git add data/hope.json
+          [ -f data/pmo.json ] && git add data/pmo.json
           if git diff --cached --quiet; then
             echo "изменений нет"; exit 0
           fi
