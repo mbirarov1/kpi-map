@@ -32,7 +32,7 @@ def main():
     sv = j.get("svodnaya") or []
     if sv:
         y = next((i for i, r in enumerate(sv) if "2026 год" in str(r[0] if r else "")), -1)
-        cr_hist, cdx_hist = [], []
+        cr_hist, cdx_hist, trf_hist = [], [], []
         if y >= 0:
             # понедельные точки: неделя k -> дата = первый понедельник 2026 + 7*(k-1)
             base = datetime.date(2026, 1, 5)
@@ -47,13 +47,18 @@ def main():
                 cd = num(r[18] if len(r) > 18 else None)
                 if cr is not None: cr_hist.append({"d": d, "v": round(cr, 2)})
                 if cd is not None: cdx_hist.append({"d": d, "v": cd})
+                tv2 = num(r[2])
+                if tv2 is not None: trf_hist.append({"d": d, "v": int(tv2)})
         if cr_hist:
             values["cmo_cr_reg_konversiya_v_registraciyu"] = str(cr_hist[-1]["v"]).replace(".", ",") + " %"
             history["cmo_cr_reg_konversiya_v_registraciyu"] = cr_hist
         if cdx_hist:
             values["cmo_registracii_cdx"] = int(cdx_hist[-1]["v"])
             history["cmo_registracii_cdx"] = cdx_hist
-        print(f"сводная: CR-REG точек {len(cr_hist)}, CDX точек {len(cdx_hist)}")
+        if trf_hist:
+            values["cmo_trafik"] = trf_hist[-1]["v"]
+            history["cmo_trafik"] = trf_hist
+        print(f"сводная: CR-REG точек {len(cr_hist)}, CDX {len(cdx_hist)}, трафик {len(trf_hist)}")
     else:
         print("сводная: " + str(j.get("svodnaya_error"))[:120])
 
@@ -74,6 +79,7 @@ def main():
     # Трек метрик (18zR…): листы MRR A+/B/CDX, последняя точка замера в строках ставок.
     # В таблице доли (0.0278) и местами уже проценты (3.16) — правило: v<=1 -> x100.
     TREK = [("A+", "1596315827"), ("B", "2086128744"), ("CDX", "1473929562")]
+    NEWKEY = {"A+": "cmo_new_mrr_aplus", "CDX": "cmo_new_mrr_cdx"}
     ROWS = {"MRR Growth rate": "seg_mrr_growth_rate",
             "NEW MRR growth rate": "seg_new_mrr_growth_rate",
             "MRR Expansion rate": "seg_mrr_expansion_rate",
@@ -94,6 +100,16 @@ def main():
         trek_ok += 1
         for row in tv:
             name = str(row[0] if row else "").strip()
+            if name == "New" and seg in NEWKEY:
+                lastn = None
+                for cell in row[1:]:
+                    if isinstance(cell, (int, float)):
+                        lastn = float(cell)
+                if lastn is not None:
+                    values[NEWKEY[seg]] = "{:,.0f}".format(round(lastn)).replace(",", " ") + " ₽"
+                    if seg == "CDX":
+                        values["_new_cdx_raw"] = lastn
+                continue
             if name not in ROWS:
                 continue
             last = None
@@ -107,6 +123,12 @@ def main():
     for key, parts in seg_parts.items():
         if parts:
             values[key] = " · ".join(parts)
+    # мост CDX: New MRR CDX последнего месяца / регистрации за ~месяц (4 недели)
+    ncdx = values.pop("_new_cdx_raw", None)
+    regs4 = sum(p["v"] for p in cdx_hist[-4:]) if sv and cdx_hist else 0
+    if ncdx and regs4:
+        values["cmo_rub_per_reg_cdx"] = str(round(ncdx / regs4)) + " ₽"
+        print("мост CDX: %.0f / %.0f = %s" % (ncdx, regs4, values["cmo_rub_per_reg_cdx"]))
     if trek_ok:
         print("трек: %d листов, метрик собрано %d" % (trek_ok, sum(1 for p in seg_parts.values() if p)))
 

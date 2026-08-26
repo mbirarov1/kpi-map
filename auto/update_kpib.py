@@ -132,6 +132,28 @@ def main():
                 continue
             values[key] = fmt(last, kind)
             history[key] = pts
+    # мост B: New MRR B на один SQL — суммы за последние 3 факт-месяца (ревизия 26.08)
+    nm = history.get("cmo_new_mrr") or []
+    sq = history.get("cmo_sql") or []
+    if nm and sq:
+        months = sorted(set(p["d"] for p in nm) & set(p["d"] for p in sq))[-3:]
+        s_nm = sum(p["v"] for p in nm if p["d"] in months)
+        s_sq = sum(p["v"] for p in sq if p["d"] in months)
+        if s_sq:
+            values["cmo_rub_per_sql_b"] = "{:,.0f}".format(round(s_nm / s_sq)).replace(",", " ") + " ₽"
+            print("мост B: %.0f / %.0f (мес: %s) = %s" % (s_nm, s_sq, ",".join(m[5:7] for m in months), values["cmo_rub_per_sql_b"]))
+
+    # защита обновляемости: пинг, если последний факт-месяц MQL B протух (ревизия 26.08)
+    kpib_warning = None
+    mql = history.get("cmo_mql_plan_fakt") or []
+    if mql:
+        last_d = datetime.date.fromisoformat(mql[-1]["d"])
+        age = (datetime.date.today() - last_d).days
+        if age > 50:
+            kpib_warning = ("KPI goals B: последний факт-месяц %s, прошло %d дн — "
+                            "данные Полетаева протухли (норма: раз в 2 недели)" % (mql[-1]["d"][:7], age))
+            print("ПИНГ: " + kpib_warning)
+
     data = {"updated": "", "values": {}, "history": {}, "comps": {}, "meta": {}, "fields": {}}
     if os.path.exists(DATA_FILE):
         with open(DATA_FILE, encoding="utf-8") as f:
@@ -141,6 +163,10 @@ def main():
     data.setdefault("history", {}).update(history)
     data.setdefault("meta", {})["kpib_source"] = (
         "KPI goals B (веб-приложение), снято %s UTC" % datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M"))
+    if kpib_warning:
+        data["meta"]["kpib_warning"] = kpib_warning
+    else:
+        data["meta"].pop("kpib_warning", None)
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
     print("kpib OK: %d значений, %d рядов истории" % (len(values), len(history)))
