@@ -6,7 +6,22 @@ Apps Script Бирарова. URL в секрете CMO_WEBAPP_URL. Пишет v
 col18 — регистрации CDX; когортная: строка «2026 год…», col27 LTV/CAC,
 col28 CPL, col29 CAC.
 """
-import json, os, sys, urllib.request, datetime
+import json, os, sys, time, urllib.request, datetime
+
+def fetch_json(url, tries=3, pause=25):
+    """Apps Script иногда транзиентно отдаёт 404/5xx — ретраим."""
+    last = None
+    for i in range(tries):
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "kpi-map-bot"})
+            with urllib.request.urlopen(req, timeout=120) as r:
+                return json.load(r)
+        except Exception as ex:
+            last = ex
+            print("fetch попытка %d не прошла: %s" % (i + 1, str(ex)[:100]))
+            if i < tries - 1:
+                time.sleep(pause)
+    raise last
 
 URL = os.environ.get("CMO_WEBAPP_URL")
 DATA_FILE = os.path.join(os.path.dirname(__file__), "..", "data", "metrics.json")
@@ -22,9 +37,7 @@ def main():
     if not URL:
         print("CMO_WEBAPP_URL не задан — пропускаю")
         return
-    req = urllib.request.Request(URL, headers={"User-Agent": "kpi-map-bot"})
-    with urllib.request.urlopen(req, timeout=90) as r:
-        j = json.load(r)
+    j = fetch_json(URL)
     today = datetime.date.today().isoformat()
     year = datetime.date.today().year
     values, history, fields = {}, {}, {}
@@ -90,10 +103,7 @@ def main():
     trek_ok = 0
     for seg, gid in TREK:
         try:
-            req2 = urllib.request.Request(URL + sep + "src=trek&gid=" + gid,
-                                          headers={"User-Agent": "kpi-map-bot"})
-            with urllib.request.urlopen(req2, timeout=120) as r2:
-                tv = json.load(r2).get("values") or []
+            tv = fetch_json(URL + sep + "src=trek&gid=" + gid).get("values") or []
         except Exception as ex:
             print("трек %s: ошибка %s" % (seg, str(ex)[:80]))
             continue
@@ -137,6 +147,11 @@ def main():
         with open(DATA_FILE, encoding="utf-8") as f:
             data = json.load(f)
     data["updated"] = today
+    # ревизия CMO 26.08: удалённые с борда метрики чистим из данных
+    for dead in ("cmo_mrr_per_rub", "cmo_payback", "cmo_cac_b", "cmo_mql_cdx",
+                 "cmo_sql_a_plus", "cmo_cr_mql_sql_a_plus"):
+        data.get("values", {}).pop(dead, None)
+        data.get("history", {}).pop(dead, None)
     data["values"].update(values)
     data.setdefault("history", {}).update(history)
     data.setdefault("meta", {})["cmo_webapp_source"] = (

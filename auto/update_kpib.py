@@ -4,7 +4,21 @@
 Вид: 'n' число, 'p' проценты (в таблице доли -> x100), 'r' рубли.
 Пишет values + помесячную history в data/metrics.json.
 """
-import json, os, urllib.request, datetime
+import json, os, time, urllib.request, datetime
+
+def fetch_json(url, tries=3, pause=25):
+    last = None
+    for i in range(tries):
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "kpi-map-bot"})
+            with urllib.request.urlopen(req, timeout=120) as r:
+                return json.load(r)
+        except Exception as ex:
+            last = ex
+            print("fetch попытка %d не прошла: %s" % (i + 1, str(ex)[:100]))
+            if i < tries - 1:
+                time.sleep(pause)
+    raise last
 
 URL = os.environ.get("CMO_WEBAPP_URL")
 DATA_FILE = os.path.join(os.path.dirname(__file__), "..", "data", "metrics.json")
@@ -20,7 +34,6 @@ MAP = [
     ("Лебедева", "MQL/мес", "cmo_mql_plan_fakt", "n"),
     ("Лебедева", "SQL/мес", "cmo_sql", "n"),
     ("Лебедева", "CR MQL→SQL", "cmo_cr_mql_sql", "p"),
-    ("Лебедева", "CAC", "cmo_cac_b", "r"),
     ("Лебедева", "New MRR", "cmo_new_mrr", "r"),
     ("Пругер", "Net Growth", "seg_b_net_growth_mes", "r"),
     ("Пругер", "New MRR", "seg_b_new_mrr_mes", "r"),
@@ -89,9 +102,7 @@ def main():
         print("CMO_WEBAPP_URL не задан — пропускаю")
         return
     sep = "&" if "?" in URL else "?"
-    req = urllib.request.Request(URL + sep + "src=kpib&gid=0", headers={"User-Agent": "kpi-map-bot"})
-    with urllib.request.urlopen(req, timeout=120) as r:
-        j = json.load(r)
+    j = fetch_json(URL + sep + "src=kpib&gid=0")
     rows = j.get("values") or []
     if not rows:
         print("kpib: пусто — " + str(j.get("error"))[:120])
