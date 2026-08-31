@@ -133,6 +133,9 @@ def main():
     for key, parts in seg_parts.items():
         if parts:
             values[key] = " · ".join(parts)
+    if seg_parts.get("seg_mrr_churn_rate"):
+        # ревизия CS 26.08: churn по сегментам — рабочий инструмент CS, дублируем композит
+        values["cs_churn_segments"] = " · ".join(seg_parts["seg_mrr_churn_rate"])
     # мост CDX: New MRR CDX последнего месяца / регистрации за ~месяц (4 недели)
     ncdx = values.pop("_new_cdx_raw", None)
     regs4 = sum(p["v"] for p in cdx_hist[-4:]) if sv and cdx_hist else 0
@@ -149,7 +152,7 @@ def main():
     data["updated"] = today
     # ревизия CMO 26.08: удалённые с борда метрики чистим из данных
     for dead in ("cmo_mrr_per_rub", "cmo_payback", "cmo_cac_b", "cmo_mql_cdx",
-                 "cmo_sql_a_plus", "cmo_cr_mql_sql_a_plus"):
+                 "cmo_sql_a_plus", "cmo_cr_mql_sql_a_plus", "cs_nrr_grr", "cs_churn_pre_churn"):
         data.get("values", {}).pop(dead, None)
         data.get("history", {}).pop(dead, None)
     data["values"].update(values)
