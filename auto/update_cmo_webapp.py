@@ -83,6 +83,9 @@ def main():
             if lc is not None: values["cmo_ltv_cac"] = str(round(lc, 1)).replace(".", ",")
             if cpl is not None: values["cmo_cpl_stoimost_lida"] = f"{round(cpl)} ₽"
             if cac is not None: values["cmo_cac"] = f"{round(cac):,} ₽".replace(",", " ")
+            crp = num(row[12] if len(row) > 12 else None)
+            if crp is not None and crp <= 1:
+                values["seg_cdx_konversiya_v_oplatu_d30"] = str(round(crp * 10000) / 100).replace(".", ",") + " %"
             print(f"когортная 2026: LTV/CAC {lc}, CPL {cpl}, CAC {cac}")
         else:
             print("когортная: строка 2026 не найдена")
@@ -130,6 +133,8 @@ def main():
                 continue
             pct = last * 100 if abs(last) <= 1 else last
             seg_parts[ROWS[name]].append("%s %s %%" % (seg, str(round(pct * 10) / 10).replace(".", ",")))
+            if seg == "CDX" and name == "MRR Churn Rate":
+                values["seg_cdx_churn_rate"] = str(round(pct * 10) / 10).replace(".", ",") + " %"
     for key, parts in seg_parts.items():
         if parts:
             values[key] = " · ".join(parts)
@@ -152,7 +157,10 @@ def main():
     data["updated"] = today
     # ревизия CMO 26.08: удалённые с борда метрики чистим из данных
     for dead in ("cmo_mrr_per_rub", "cmo_payback", "cmo_cac_b", "cmo_mql_cdx",
-                 "cmo_sql_a_plus", "cmo_cr_mql_sql_a_plus", "cs_nrr_grr", "cs_churn_pre_churn"):
+                 "cmo_sql_a_plus", "cmo_cr_mql_sql_a_plus", "cs_nrr_grr", "cs_churn_pre_churn",
+                 "seg_b_nrr", "seg_b_grr", "seg_b_churn_rate", "seg_b_contraction_rate",
+                 "seg_b_expansion_rate", "seg_b_expansion_mrr_mes", "seg_b_new_mrr_mes",
+                 "seg_b_churn_mrr_mes", "seg_cdx_novye_registracii", "seg_cdx_trafik"):
         data.get("values", {}).pop(dead, None)
         data.get("history", {}).pop(dead, None)
     data["values"].update(values)

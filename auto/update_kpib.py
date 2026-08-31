@@ -25,10 +25,6 @@ DATA_FILE = os.path.join(os.path.dirname(__file__), "..", "data", "metrics.json"
 
 MAP = [
     ("Халезов", "Segment MRR", "seg_b_mrr", "r"),
-    ("Халезов", "NRR", "seg_b_nrr", "p"),
-    ("Халезов", "GRR", "seg_b_grr", "p"),
-    ("Халезов", "Churn Rate", "seg_b_churn_rate", "p"),
-    ("Халезов", "Contraction Rate", "seg_b_contraction_rate", "p"),
     ("Селиванов", "NPS продукта", "cpo_nps", "n"),
     ("Селиванов", "Roadmap Completion", "cpo_roadmap_completion", "p"),
     ("Лебедева", "MQL/мес", "cmo_mql_plan_fakt", "n"),
@@ -36,12 +32,9 @@ MAP = [
     ("Лебедева", "CR MQL→SQL", "cmo_cr_mql_sql", "p"),
     ("Лебедева", "New MRR", "cmo_new_mrr", "r"),
     ("Пругер", "Net Growth", "seg_b_net_growth_mes", "r"),
-    ("Пругер", "New MRR", "seg_b_new_mrr_mes", "r"),
     ("Пругер", "MRR Rate", "seg_b_mrr_rate", "p"),
-    ("Пругер", "Expansion Rate", "seg_b_expansion_rate", "p"),
     ("Былинкин", "Win Rate", "seg_b_win_rate", "p"),
     ("Былинкин", "ARPA", "seg_b_arpa", "r"),
-    ("Былинкин", "Expansion MRR", "seg_b_expansion_mrr_mes", "r"),
     ("Шеповалов", "NRR", "cs_nrr", "p"),
     ("Шеповалов", "GRR", "cs_grr", "p"),
     ("Шеповалов", "Churned MRR", "cs_churned_mrr", "r"),
